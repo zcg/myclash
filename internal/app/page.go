@@ -3,6 +3,7 @@ package app
 import (
 	"errors"
 	"fmt"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -578,6 +579,16 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 		}
 		ui.Text(c, "轻量模式关闭窗口后由 Agent 保留内核与托盘；再次打开窗口只附着 Agent，不再启动第二套内核。").
 			FontSize(11).TextColor(p.InkSubtle)
+		if runtime.GOOS == "windows" {
+			if acrylic.Checkbox(c, p, &a.elevatedAgent, "登录时以管理员启动 Agent（TUN 需要）").Changed() {
+				if err := platform.SetAgentAtLogin(a.elevatedAgent); err != nil {
+					a.elevatedAgent = !a.elevatedAgent
+					a.setError(err)
+				} else {
+					a.setStatus("登录提权 Agent 已更新")
+				}
+			}
+		}
 		changed := false
 		if acrylic.Checkbox(c, p, &a.autoStart, "启动时自动启用上次配置").Changed() {
 			changed = true
