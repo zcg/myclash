@@ -96,6 +96,9 @@ type App struct {
 	autoStart        bool
 	openAtLogin      bool
 	notifications    bool
+	attach           bool
+	agentPID         int
+	runModeIdx       int
 	closeTray        bool
 	forceQuit        bool
 	logFile          *os.File
@@ -203,14 +206,21 @@ type App struct {
 // Run starts the application. It returns immediately when another instance is
 // already running (that instance gets activated instead).
 func Run() error {
-	if !mygo.App.RequestSingleInstanceLock() {
-		return nil
+	if hasArg("--agent") {
+		return runAgent()
+	}
+	attach := hasArg("--attach") || agentAlive()
+	if !attach {
+		if !mygo.App.RequestSingleInstanceLock() {
+			return nil
+		}
 	}
 	a := &App{
 		state:  core.NewState(),
 		router: ui.NewRouter("/overview"),
 		side:   "overview",
 		ctx:    context.Background(),
+		attach: attach,
 	}
 	a.cancel = func() {}
 	mygo.App.WhenReady(a.ready)
@@ -263,6 +273,10 @@ func (a *App) ready() {
 	a.mixed = strconv.Itoa(s.Core.MixedPort)
 	a.controller = strconv.Itoa(s.Core.ControllerPort)
 	a.modeIdx = modeIndex(s.Core.Mode)
+	a.runModeIdx = 0
+	if s.App.RunMode == "lightweight" {
+		a.runModeIdx = 1
+	}
 	a.proxyModeIdx = 0
 	if s.Proxy.Mode == "pac" {
 		a.proxyModeIdx = 1
@@ -371,15 +385,31 @@ func (a *App) ready() {
 	}
 	a.win = mygo.NewWindow(opts)
 	a.win.OnClose(func(e *mygo.CloseEvent) {
+		if a.attach {
+			os.Exit(0)
+		}
+		if a.settings.Get().App.RunMode == "lightweight" && !a.forceQuit {
+			e.PreventDefault()
+			a.switchToAgent()
+			return
+		}
 		if a.closeTray && !a.forceQuit {
 			e.PreventDefault()
 			a.win.Hide()
 		}
 	})
-	a.setupTray()
-	a.registerHotkeys()
+	if a.attach {
+		if err := a.attachAgent(); err != nil {
+			a.attach = false
+			a.setError(err)
+		}
+	}
+	if !a.attach {
+		a.setupTray()
+		a.registerHotkeys()
+	}
 
-	if s.App.AutoStartProfile && a.profiles.Selected() != "" {
+	if !a.attach && s.App.AutoStartProfile && a.profiles.Selected() != "" {
 		a.startCore()
 	}
 }
@@ -586,6 +616,10 @@ func (a *App) options() config.Options {
 }
 
 func (a *App) startCore() {
+	if a.attach {
+		a.setError(errors.New("当前由轻量 Agent 托管"))
+		return
+	}
 	if a.profiles.Selected() == "" {
 		a.setError(errors.New("先添加并启用一个配置"))
 		return
@@ -1335,6 +1369,10 @@ func (a *App) tunActive() bool {
 }
 
 func (a *App) toggleTUN() {
+	if a.attach {
+		a.setError(errors.New("当前由轻量 Agent 托管，请在 Agent 托盘里管理"))
+		return
+	}
 	a.saveTUN()
 	if !a.tunEnable {
 		if a.state.Get().Started {

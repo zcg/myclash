@@ -1,7 +1,7 @@
 {
   "name": "myclash",
   "identifier": "com.example.myclash",
-  "version": "0.6.3",
+  "version": "0.7.0",
   "out": "build",
   "windows": { "installerInclude": "packaging/myclash.nsh" }
 }

@@ -564,6 +564,20 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 	case "general":
 		ui.Text(c, "常规").FontSize(15).Bold()
 		ui.Text(c, "启动、关闭与登录时的应用行为。").FontSize(11).TextColor(p.InkSubtle)
+		ui.Text(c, "运行模式").FontSize(11).TextColor(p.InkSubtle)
+		if seg := acrylic.SegmentedText(c, p, &a.runModeIdx, "标准（单进程）", "轻量（Agent）"); seg.Changed() {
+			mode := "standard"
+			if a.runModeIdx == 1 {
+				mode = "lightweight"
+			}
+			if err := a.settings.Update(func(s *settings.Settings) { s.App.RunMode = mode }); err != nil {
+				a.setError(err)
+			} else {
+				a.setStatus("运行模式已保存；关闭窗口后按该模式运行")
+			}
+		}
+		ui.Text(c, "轻量模式关闭窗口后由 Agent 保留内核与托盘；再次打开窗口只附着 Agent，不再启动第二套内核。").
+			FontSize(11).TextColor(p.InkSubtle)
 		changed := false
 		if acrylic.Checkbox(c, p, &a.autoStart, "启动时自动启用上次配置").Changed() {
 			changed = true
