@@ -516,11 +516,15 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 	case "kernel":
 		ui.Text(c, "内核").FontSize(15).Bold()
 		ui.Text(c, "端口、转发模式与日志级别；端口改动会重启内核。").FontSize(11).TextColor(p.InkSubtle)
-		ui.Row(c).Gap(12).Children(func() {
-			ui.TextInput(c, &a.mixed).Label("混合端口").Width(150)
-			ui.TextInput(c, &a.controller).Label("Controller 端口").Width(150)
+		ui.Row(c).Gap(12).AlignItems(ui.Start).Children(func() {
+			acrylic.TextField(c, p, &a.mixed, acrylic.TextFieldOptions{
+				Label: "混合端口", Description: "HTTP/SOCKS 客户端连接端口", Width: 180,
+			})
+			acrylic.TextField(c, p, &a.controller, acrylic.TextFieldOptions{
+				Label: "Controller 端口", Description: "仅本机 REST，供界面读取状态", Width: 200,
+			})
 		})
-		ui.Text(c, "混合端口供 HTTP/SOCKS 客户端使用；Controller 只监听本机 REST，供界面读取状态。").FontSize(11).TextColor(p.InkSubtle)
+		ui.Text(c, "修改端口会重启内核；端口被占用时会自动回落到随机本机端口。").FontSize(11).TextColor(p.InkSubtle)
 		ui.Text(c, "转发模式").FontSize(11).TextColor(p.InkSubtle)
 		seg := acrylic.SegmentedText(c, p, &a.modeIdx, "规则", "全局", "直连")
 		if seg.Changed() {
@@ -559,14 +563,20 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 			}
 		})
 		ui.Text(c, "绕过列表").FontSize(11).TextColor(p.InkSubtle)
-		ui.TextInput(c, &a.bypass).Label("分号分隔，例如 <local>;127.*;192.168.*").Width(460)
+		acrylic.TextField(c, p, &a.bypass, acrylic.TextFieldOptions{
+			Label: "绕过列表", Description: "分号分隔，例如 <local>;127.*;192.168.*", Width: 520,
+		})
 		if acrylic.Button(c, p, "保存绕过列表", false).Clicked() {
 			a.saveBypass()
 		}
 		ui.Text(c, "测试 URL").FontSize(13).Bold()
 		ui.Text(c, "测延迟走 HEAD/204 小文件；测速下载下面这个真实文件。留空使用默认值。").FontSize(11).TextColor(p.InkSubtle)
-		ui.TextInput(c, &a.testDelayURL).Label("测延迟 URL").Width(520)
-		ui.TextInput(c, &a.testSpeedURL).Label("测速 URL（直链）").Width(520)
+		acrylic.TextField(c, p, &a.testDelayURL, acrylic.TextFieldOptions{
+			Label: "测延迟 URL", Description: "mihomo 向此 URL 发请求并测量往返时间", Width: 560,
+		})
+		acrylic.TextField(c, p, &a.testSpeedURL, acrylic.TextFieldOptions{
+			Label: "测速 URL（直链）", Description: "通过 mixed 端口实际下载该文件计算 Mbps", Width: 560,
+		})
 		if acrylic.Button(c, p, "保存测试设置", false).Clicked() {
 			delayURL := strings.TrimSpace(a.testDelayURL)
 			if delayURL == "" {
@@ -648,7 +658,7 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 		ui.Text(c, "保留时间").FontSize(11).TextColor(p.InkSubtle)
 		acrylic.SegmentedText(c, p, &a.logRetentionIdx, "永久", "1 天", "7 天", "30 天")
 		ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
-			ui.TextInput(c, &a.logMaxText).Label("单文件上限 MB").Width(150)
+			acrylic.TextField(c, p, &a.logMaxText, acrylic.TextFieldOptions{Label: "单文件上限 MB", Description: "达到上限时清空当前日志文件", Width: 190})
 			if acrylic.Button(c, p, "应用日志策略", false).Clicked() {
 				mb := atoiSafe(a.logMaxText)
 				if mb <= 0 {
@@ -679,10 +689,10 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 		ui.Text(c, "WebDAV 同步").FontSize(13).Bold()
 		ui.Text(c, "备份 zip 会 PUT 到该地址；下载后覆盖并重启。密码保存在 settings.yaml，请使用专用应用密码。").
 			FontSize(11).TextColor(p.InkSubtle)
-		ui.TextInput(c, &a.webdavURL).Label("WebDAV 地址或文件 URL").Width(520)
+		acrylic.TextField(c, p, &a.webdavURL, acrylic.TextFieldOptions{Label: "WebDAV 地址或文件 URL", Description: "例如 https://dav.example.com/myclash/", Width: 560})
 		ui.Row(c).Gap(10).Children(func() {
-			ui.TextInput(c, &a.webdavUser).Label("用户名").Width(220)
-			ui.TextInput(c, &a.webdavPass).Label("密码 / 应用密码").Width(220)
+			acrylic.TextField(c, p, &a.webdavUser, acrylic.TextFieldOptions{Label: "用户名", Width: 240})
+			acrylic.TextField(c, p, &a.webdavPass, acrylic.TextFieldOptions{Label: "密码 / 应用密码", Description: "建议使用专用应用密码", Width: 240})
 		})
 		ui.Row(c).Gap(8).Wrap().Children(func() {
 			if acrylic.Button(c, p, "保存 WebDAV", false).Clicked() {
@@ -741,12 +751,18 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 		if fp.Changed() {
 			changed = true
 		}
-		ui.Row(c).Gap(12).Children(func() {
-			ui.TextInput(c, &a.fingerprint).Label("TLS 客户端指纹").Width(180)
-			ui.TextInput(c, &a.iface).Label("出站网卡（可选）").Width(180)
-			ui.TextInput(c, &a.routingMark).Label("routing-mark（Linux）").Width(160)
+		ui.Row(c).Gap(12).AlignItems(ui.Start).Children(func() {
+			acrylic.TextField(c, p, &a.fingerprint, acrylic.TextFieldOptions{
+				Label: "TLS 客户端指纹", Description: "常用 chrome；匹配服务端指纹策略", Width: 200,
+			})
+			acrylic.TextField(c, p, &a.iface, acrylic.TextFieldOptions{
+				Label: "出站网卡（可选）", Description: "留空自动选择；指定时填网卡名", Width: 200,
+			})
+			acrylic.TextField(c, p, &a.routingMark, acrylic.TextFieldOptions{
+				Label: "routing-mark（Linux）", Description: "0 表示关闭；需与策略路由配合", Width: 200,
+			})
 		})
-		ui.Text(c, "指纹常用 chrome；出站网卡留空表示自动选择；routing-mark 0 表示关闭。").FontSize(11).TextColor(p.InkSubtle)
+		ui.Text(c, "保存后重启内核生效。").FontSize(11).TextColor(p.InkSubtle)
 		ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
 			if acrylic.PrimaryButton(c, p, "保存", false).Clicked() {
 				changed = true
