@@ -89,3 +89,11 @@ func (a *App) trafficSeries(limit int, down bool) []float64 {
 	}
 	return out
 }
+
+func (a *App) trafficHistorySnapshot() []trafficPoint {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	out := make([]trafficPoint, len(a.trafficHistory))
+	copy(out, a.trafficHistory)
+	return out
+}

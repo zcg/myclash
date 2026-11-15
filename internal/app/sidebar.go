@@ -1,6 +1,8 @@
 package app
 
 import (
+	"runtime"
+
 	"github.com/egoist/mygo/ui"
 
 	"myclash/internal/ui/acrylic"
@@ -20,6 +22,7 @@ func (a *App) sidebar(c *ui.Context, p acrylic.Palette) {
 		})
 		ui.SidebarSection(c, "运行", nil, func() {
 			ui.SidebarItem(c, "connections", icons.Activity, "连接")
+			ui.SidebarItem(c, "traffic", icons.Gauge, "流量")
 			ui.SidebarItem(c, "rules", icons.ListTree, "规则")
 			ui.SidebarItem(c, "logs", icons.ScrollText, "日志")
 		})
@@ -32,6 +35,9 @@ func (a *App) sidebar(c *ui.Context, p acrylic.Palette) {
 		ui.SidebarSection(c, "工具", nil, func() {
 			ui.SidebarItem(c, "override", icons.Layers, "覆写")
 			ui.SidebarItem(c, "resources", icons.Server, "资源")
+			if runtime.GOOS == "windows" {
+				ui.SidebarItem(c, "uwp", icons.ShieldCheck, "UWP 回环")
+			}
 		})
 		ui.SidebarSection(c, "系统", nil, func() {
 			ui.SidebarItem(c, "settings", icons.Settings, "设置")
@@ -59,6 +65,7 @@ func (a *App) monoSidebar(c *ui.Context, p acrylic.Palette) {
 		}},
 		{"运行", []navItem{
 			{"connections", "连接", icons.Activity},
+			{"traffic", "流量", icons.Gauge},
 			{"rules", "规则", icons.ListTree},
 			{"logs", "日志", icons.ScrollText},
 		}},
@@ -71,6 +78,7 @@ func (a *App) monoSidebar(c *ui.Context, p acrylic.Palette) {
 		{"工具", []navItem{
 			{"override", "覆写", icons.Layers},
 			{"resources", "资源", icons.Server},
+			{"uwp", "UWP 回环", icons.ShieldCheck},
 		}},
 		{"系统", []navItem{
 			{"settings", "设置", icons.Settings},

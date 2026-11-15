@@ -1,0 +1,104 @@
+package app
+
+import (
+	"fmt"
+	"runtime"
+	"strings"
+
+	"github.com/egoist/mygo/ui"
+
+	"myclash/internal/platform"
+	"myclash/internal/ui/acrylic"
+)
+
+func (a *App) loadUWP() {
+	if runtime.GOOS != "windows" || a.uwpBusy {
+		return
+	}
+	a.uwpBusy = true
+	go func() {
+		apps, err := platform.ListUWP()
+		a.win.Update(func() {
+			a.uwpBusy = false
+			a.uwpLoaded = true
+			if err != nil {
+				a.setError(fmt.Errorf("读取 UWP 应用失败: %w", err))
+				return
+			}
+			a.uwpApps = apps
+		})
+	}()
+}
+
+func (a *App) pageUWP(c *ui.Context, p acrylic.Palette) {
+	a.header(c, p, "UWP 回环", "允许 Windows 商店应用通过本机回环访问代理端口")
+	if runtime.GOOS != "windows" {
+		ui.Text(c, "UWP 回环豁免仅在 Windows 可用。").TextColor(p.InkMuted)
+		return
+	}
+	if !a.uwpLoaded && !a.uwpBusy {
+		a.loadUWP()
+	}
+	ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+		acrylic.SearchField(c, p, &a.uwpSearch, "搜索应用名或包名")
+		ui.Spacer(c)
+		if acrylic.Button(c, p, "刷新", a.uwpBusy).Clicked() {
+			a.uwpLoaded = false
+			a.loadUWP()
+		}
+	})
+	ui.Text(c, "开启后调用 CheckNetIsolation LoopbackExempt；需要管理员权限，会弹出一次 UAC。").
+		FontSize(11).TextColor(p.InkSubtle)
+	a.errorBar(c, p)
+	if a.uwpBusy && !a.uwpLoaded {
+		ui.Text(c, "正在读取已安装的 UWP 应用…").TextColor(p.InkMuted)
+		return
+	}
+	q := strings.ToLower(strings.TrimSpace(a.uwpSearch))
+	var rows []platform.UWPApp
+	for _, app := range a.uwpApps {
+		if q == "" || strings.Contains(strings.ToLower(app.Name+" "+app.PackageFullName), q) {
+			rows = append(rows, app)
+		}
+	}
+	if len(rows) == 0 {
+		ui.Text(c, "没有匹配的 UWP 应用。").TextColor(p.InkMuted)
+		return
+	}
+	ui.Column(c).Height(520).Background(p.Code).Radius(8).Padding(10).Clip().Children(func() {
+		ui.List(c, &a.uwpList, len(rows), func(i int) {
+			app := rows[i]
+			ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
+				ui.Column(c).Gap(2).Grow(1).Children(func() {
+					ui.Text(c, app.Name).FontSize(12).Bold().SingleLine()
+					ui.Text(c, app.PackageFullName).FontSize(10).TextColor(p.InkSubtle).SingleLine()
+				})
+				if app.Loopback {
+					if acrylic.Button(c, p, "移除回环", false).Clicked() {
+						a.setUWPLoopback(app, false)
+					}
+				} else if acrylic.Button(c, p, "允许回环", false).Clicked() {
+					a.setUWPLoopback(app, true)
+				}
+			})
+		}).Grow(1)
+	})
+}
+
+func (a *App) setUWPLoopback(app platform.UWPApp, enable bool) {
+	if a.uwpBusy {
+		return
+	}
+	a.uwpBusy = true
+	go func() {
+		err := platform.SetUWPLoopback(app.PackageFullName, enable)
+		a.win.Update(func() {
+			a.uwpBusy = false
+			if err != nil {
+				a.setError(fmt.Errorf("设置 UWP 回环失败: %w", err))
+				return
+			}
+			a.loadUWP()
+		})
+	}()
+}

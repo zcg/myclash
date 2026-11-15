@@ -121,6 +121,12 @@ type App struct {
 	trafficPath      string
 	trafficHistory   []trafficPoint
 	lastTrafficSave  time.Time
+	trafficState     ui.ListState
+	uwpApps          []platform.UWPApp
+	uwpSearch        string
+	uwpLoaded        bool
+	uwpBusy          bool
+	uwpList          ui.ListState
 	proxySearch      string
 	proxySortIdx     int
 	proxyExpanded    map[string]bool
@@ -427,6 +433,9 @@ func (a *App) view(c *ui.Context) {
 						case r.Match("/connections"):
 							r.Title("连接")
 							a.pageConnections(c, p)
+						case r.Match("/traffic"):
+							r.Title("流量")
+							a.pageTraffic(c, p)
 						case r.Match("/rules"):
 							r.Title("规则")
 							a.pageRules(c, p)
@@ -448,6 +457,9 @@ func (a *App) view(c *ui.Context) {
 						case r.Match("/sniffer"):
 							r.Title("嗅探")
 							a.pageSniffer(c, p)
+						case r.Match("/uwp"):
+							r.Title("UWP 回环")
+							a.pageUWP(c, p)
 						case r.Match("/sysproxy"):
 							r.Title("系统代理")
 							a.pageSysProxy(c, p)

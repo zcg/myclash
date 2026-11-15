@@ -15,6 +15,7 @@ func (a *App) setupFloating() {
 	}
 	opts := mygo.WindowOptions{
 		Title:           "myclash 悬浮窗",
+		StateKey:        "floating",
 		Width:           220,
 		Height:          84,
 		Frameless:       true,
