@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -480,11 +481,16 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 				a.toggleSystemProxy(a.systemProxy)
 			}
 		})
-		ui.Text(c, "绕过列表："+strings.Join(a.settings.Get().Proxy.Bypass, "；")).FontSize(11).TextColor(p.InkMuted)
+		ui.Text(c, "绕过列表").FontSize(11).TextColor(p.InkSubtle)
+		ui.TextInput(c, &a.bypass).Label("分号分隔，例如 <local>;127.*;192.168.*").Width(460)
+		if acrylic.Button(c, p, "保存绕过列表", false).Clicked() {
+			a.saveBypass()
+		}
 		ui.Text(c, "TUN 需要管理员权限；开启后会自动提权重启。").FontSize(11).TextColor(p.InkSubtle)
 
 	case "general":
 		ui.Text(c, "常规").FontSize(15).Bold()
+		ui.Text(c, "启动、关闭与登录时的应用行为。").FontSize(11).TextColor(p.InkSubtle)
 		changed := false
 		if acrylic.Checkbox(c, p, &a.autoStart, "启动时自动启用上次配置").Changed() {
 			changed = true
@@ -492,17 +498,18 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 		if acrylic.Checkbox(c, p, &a.closeTray, "关闭窗口时保留在托盘").Changed() {
 			changed = true
 		}
-		if changed {
-			if acrylic.Checkbox(c, p, &a.openAtLogin, "登录时启动 myclash").Changed() {
-				if err := mygo.App.SetOpenAtLogin(a.openAtLogin); err != nil {
-					a.setError(err)
-				} else {
-					_ = a.settings.Update(func(s *settings.Settings) { s.App.OpenAtLogin = a.openAtLogin })
-				}
+		if acrylic.Checkbox(c, p, &a.openAtLogin, "登录时启动 myclash").Changed() {
+			if err := mygo.App.SetOpenAtLogin(a.openAtLogin); err != nil {
+				a.setError(err)
+			} else {
+				changed = true
 			}
+		}
+		if changed {
 			_ = a.settings.Update(func(s *settings.Settings) {
 				s.App.AutoStartProfile = a.autoStart
 				s.App.CloseToTray = a.closeTray
+				s.App.OpenAtLogin = a.openAtLogin
 			})
 		}
 		ui.Text(c, "轻量模式（M3）：关闭窗口后由后台 Agent 保留内核与托盘。").FontSize(11).TextColor(p.InkSubtle)
@@ -570,23 +577,78 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 		}
 	case "tray":
 		ui.Text(c, "托盘").FontSize(15).Bold()
-		ui.Text(c, "右键托盘图标可用：显示窗口、切换模式、系统代理、TUN、重启内核和退出。").FontSize(11).TextColor(p.InkSubtle)
+		ui.Text(c, "关闭窗口后是否继续驻留，以及托盘菜单里能直接做什么。").FontSize(11).TextColor(p.InkSubtle)
+		if acrylic.Checkbox(c, p, &a.closeTray, "关闭窗口时保留在托盘").Changed() {
+			if err := a.settings.Update(func(s *settings.Settings) { s.App.CloseToTray = a.closeTray }); err != nil {
+				a.setError(err)
+			}
+		}
+		ui.Text(c, "右键托盘图标：显示窗口、当前配置、规则/全局/直连、TUN、重启内核、系统代理、退出。").FontSize(11).TextColor(p.InkMuted)
+		ui.Text(c, "左键托盘图标：显示主窗口。退出会先移除图标并停止内核。").FontSize(11).TextColor(p.InkSubtle)
+		ui.Row(c).Gap(8).Children(func() {
+			if acrylic.Button(c, p, "显示窗口", false).Clicked() && a.win != nil {
+				a.win.Show()
+				a.win.Focus()
+			}
+			if acrylic.Button(c, p, "退出 myclash", false).Clicked() {
+				a.quitApp()
+			}
+		})
 
 	case "hotkeys":
 		ui.Text(c, "热键").FontSize(15).Bold()
-		ui.Text(c, "格式如 CmdOrCtrl+Shift+M；留空可禁用单项。").FontSize(11).TextColor(p.InkSubtle)
-		ui.Row(c).Gap(12).Wrap().Children(func() {
-			ui.TextInput(c, &a.hotkeyShow).Label("显示窗口").Width(220)
-			ui.TextInput(c, &a.hotkeyProxy).Label("系统代理").Width(220)
-		})
-		ui.Row(c).Gap(12).Wrap().Children(func() {
-			ui.TextInput(c, &a.hotkeyTUN).Label("TUN").Width(220)
-			ui.TextInput(c, &a.hotkeyMode).Label("切换模式").Width(220)
-		})
-		ui.Row(c).Gap(12).Wrap().Children(func() {
-			ui.TextInput(c, &a.hotkeyQuit).Label("退出应用").Width(220)
-		})
+		ui.Text(c, "全局热键：窗口不在前台时也会触发。格式如 CmdOrCtrl+Shift+M，留空即禁用。").
+			FontSize(11).TextColor(p.InkSubtle)
+		type hotkeyEntry struct {
+			title string
+			desc  string
+			value *string
+			def   string
+		}
+		entries := []hotkeyEntry{
+			{"显示窗口", "唤醒并聚焦主窗口", &a.hotkeyShow, "CmdOrCtrl+Shift+M"},
+			{"切换模式", "规则 → 全局 → 直连 循环", &a.hotkeyMode, "CmdOrCtrl+Shift+R"},
+			{"系统代理", "打开或关闭系统代理", &a.hotkeyProxy, "CmdOrCtrl+Shift+P"},
+			{"TUN", "打开或关闭 TUN", &a.hotkeyTUN, "CmdOrCtrl+Shift+T"},
+			{"退出应用", "立即退出并释放内核", &a.hotkeyQuit, "CmdOrCtrl+Shift+Q"},
+		}
+		seen := map[string]string{}
+		conflict := ""
+		for _, e := range entries {
+			e := e
+			ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
+				ui.Column(c).Width(180).Gap(2).Children(func() {
+					ui.Text(c, e.title).FontSize(13).Bold()
+					ui.Text(c, e.desc).FontSize(11).TextColor(p.InkSubtle).SingleLine()
+				})
+				ui.TextInput(c, e.value).Width(250)
+				if acrylic.Button(c, p, "默认", false).Clicked() {
+					*e.value = e.def
+				}
+				if acrylic.Button(c, p, "清除", false).Clicked() {
+					*e.value = ""
+				}
+			})
+			v := strings.ToLower(strings.TrimSpace(*e.value))
+			if v == "" {
+				continue
+			}
+			if prev, ok := seen[v]; ok {
+				conflict = fmt.Sprintf("%s 与 %s 使用了同一个组合：%s", prev, e.title, *e.value)
+			} else {
+				seen[v] = e.title
+			}
+		}
+		if conflict != "" {
+			ui.Text(c, "冲突："+conflict).FontSize(11).TextColor(p.Danger)
+		}
+		ui.Text(c, "保存后立即重新注册；如果组合已被系统或其他应用占用，该项不会生效，可换一个组合。").
+			FontSize(11).TextColor(p.InkSubtle)
 		if acrylic.PrimaryButton(c, p, "保存并注册", false).Clicked() {
+			if conflict != "" {
+				a.setError(errors.New(conflict))
+				return
+			}
 			if err := a.settings.Update(func(s *settings.Settings) {
 				s.Hotkeys.Show = a.hotkeyShow
 				s.Hotkeys.SystemProxy = a.hotkeyProxy

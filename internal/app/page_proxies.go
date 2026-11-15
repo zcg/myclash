@@ -31,6 +31,18 @@ func (a *App) pageProxies(c *ui.Context, p acrylic.Palette) {
 		if acrylic.Button(c, p, "刷新", false).Clicked() {
 			a.refreshProxies()
 		}
+		if acrylic.Button(c, p, "定位当前", false).Clicked() {
+			if group, _, ok := a.currentNode(s); ok {
+				a.proxyExpanded[group] = true
+				a.scrollProxyGroup = group
+				a.invalidate()
+			}
+		}
+		if acrylic.Button(c, p, "全部测延迟", false).Clicked() {
+			for _, group := range proxyGroups(s) {
+				a.testGroupDelay(group)
+			}
+		}
 	})
 	a.errorBar(c, p)
 
