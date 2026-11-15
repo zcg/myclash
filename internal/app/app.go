@@ -114,6 +114,10 @@ type App struct {
 	testSpeedURL     string
 	siteResults      []siteResult
 	siteTesting      bool
+	paletteOpen      bool
+	paletteQuery     string
+	paletteIndex     int
+	floating         *mygo.Window
 	proxySearch      string
 	proxySortIdx     int
 	proxyExpanded    map[string]bool
@@ -456,6 +460,7 @@ func (a *App) view(c *ui.Context) {
 			})
 		})
 	})
+	a.commandPalette(c, p)
 }
 
 func (a *App) statusStrip(c *ui.Context, p acrylic.Palette) {
@@ -622,7 +627,7 @@ func (a *App) paintTraffic() {
 	}
 	a.lastTrafficPaint = time.Now()
 	a.paintMu.Unlock()
-	a.win.Invalidate()
+	a.invalidateWindows()
 }
 
 func (a *App) paintConnections() {
@@ -633,7 +638,14 @@ func (a *App) paintConnections() {
 	}
 	a.lastConnPaint = time.Now()
 	a.paintMu.Unlock()
+	a.invalidateWindows()
+}
+
+func (a *App) invalidateWindows() {
 	a.win.Invalidate()
+	if a.floating != nil {
+		a.floating.Invalidate()
+	}
 }
 
 func (a *App) trackConnRates(conns []core.Connection) {

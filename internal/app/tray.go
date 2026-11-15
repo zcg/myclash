@@ -55,6 +55,9 @@ func (a *App) trayMenu() *mygo.Menu {
 				a.win.Show()
 			}
 		}},
+		{Label: "悬浮窗", Click: func(*mygo.MenuItem, *mygo.Window) {
+			a.toggleFloating()
+		}},
 		{Type: mygo.MenuItemSeparator},
 		{Label: a.profileName(), Disabled: true},
 		{Type: mygo.MenuItemSeparator},
@@ -123,6 +126,16 @@ func (a *App) registerHotkeys() {
 	register(a.hotkeyQuit, a.quitApp)
 	// Quitting must not depend on a profile that may have cleared its hotkeys.
 	register("CmdOrCtrl+Shift+Q", a.quitApp)
+	register("CmdOrCtrl+K", func() {
+		a.paletteOpen = !a.paletteOpen
+		a.paletteQuery = ""
+		a.paletteIndex = 0
+		if a.win != nil {
+			a.win.Show()
+			a.win.Focus()
+		}
+		a.invalidate()
+	})
 }
 
 func (a *App) quitApp() {
