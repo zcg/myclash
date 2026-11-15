@@ -23,3 +23,9 @@ type SysProxy interface {
 	Enabled() (bool, error)
 	Restore(ProxySnapshot) error
 }
+
+// PACProxy is implemented where the system can point at an automatic proxy URL.
+type PACProxy interface {
+	EnablePAC(url string) error
+	DisablePAC() error
+}

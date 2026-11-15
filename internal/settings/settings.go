@@ -75,6 +75,7 @@ type UI struct {
 
 type Proxy struct {
 	SystemEnabled bool     `yaml:"system_enabled"`
+	Mode          string   `yaml:"mode"` // manual | pac
 	Bypass        []string `yaml:"bypass"`
 	LastGroup     string   `yaml:"last_group"`
 	LastNode      string   `yaml:"last_node"`
@@ -151,6 +152,7 @@ func Default() Settings {
 			Scale:       1.25,
 		},
 		Proxy: Proxy{
+			Mode:   "manual",
 			Bypass: []string{"<local>", "127.*", "10.*", "172.16.*", "192.168.*"},
 		},
 		DNS: DNS{
@@ -374,6 +376,9 @@ func normalize(v Settings) Settings {
 	}
 	if v.Test.SpeedURL == "" {
 		v.Test.SpeedURL = "https://speed.cloudflare.com/__down?bytes=4000000"
+	}
+	if v.Proxy.Mode != "pac" {
+		v.Proxy.Mode = "manual"
 	}
 	return v
 }

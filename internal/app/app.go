@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -56,6 +57,9 @@ type App struct {
 	systemProxy   bool
 	proxySnapshot platform.ProxySnapshot
 	proxyOwned    bool
+	proxyModeIdx  int
+	pacServer     *http.Server
+	pacURL        string
 
 	win    *mygo.Window
 	tray   *mygo.Tray
@@ -253,6 +257,10 @@ func (a *App) ready() {
 	a.mixed = strconv.Itoa(s.Core.MixedPort)
 	a.controller = strconv.Itoa(s.Core.ControllerPort)
 	a.modeIdx = modeIndex(s.Core.Mode)
+	a.proxyModeIdx = 0
+	if s.Proxy.Mode == "pac" {
+		a.proxyModeIdx = 1
+	}
 	a.logLevelIdx = logLevelIndex(s.Core.LogLevel)
 	a.themeIdx = themeIndex(s.UI.Theme)
 	a.presetIdx = presetIndex(s.UI.Preset)
@@ -1385,7 +1393,26 @@ func (a *App) toggleSystemProxy(on bool) {
 			return
 		}
 		a.proxySnapshot = snap
-		if err := a.sysproxy.Enable("127.0.0.1", s.Core.MixedPort, s.Proxy.Bypass); err != nil {
+		if s.Proxy.Mode == "pac" {
+			pac, ok := a.sysproxy.(platform.PACProxy)
+			if !ok {
+				a.systemProxy = false
+				a.setError(platform.ErrUnsupported)
+				return
+			}
+			pacURL, err := a.startPAC()
+			if err != nil {
+				a.systemProxy = false
+				a.setError(err)
+				return
+			}
+			if err := pac.EnablePAC(pacURL); err != nil {
+				a.stopPAC()
+				a.systemProxy = false
+				a.setError(err)
+				return
+			}
+		} else if err := a.sysproxy.Enable("127.0.0.1", s.Core.MixedPort, s.Proxy.Bypass); err != nil {
 			a.systemProxy = false
 			a.setError(err)
 			return
@@ -1394,10 +1421,13 @@ func (a *App) toggleSystemProxy(on bool) {
 		if err := a.sysproxy.Restore(a.proxySnapshot); err != nil {
 			a.setError(err)
 		}
+		a.stopPAC()
 	} else if err := a.sysproxy.Disable(); err != nil {
 		a.systemProxy = true
 		a.setError(err)
 		return
+	} else {
+		a.stopPAC()
 	}
 	a.systemProxy = on
 	a.proxyOwned = on

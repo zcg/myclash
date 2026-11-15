@@ -17,6 +17,16 @@ func (a *App) pageSysProxy(c *ui.Context, p acrylic.Palette) {
 
 	card := a.panel(c, p, a.cardOpacity()).Padding(a.cardPad())
 	card.Children(func() {
+		ui.Text(c, "代理方式").FontSize(11).TextColor(p.InkSubtle)
+		if seg := acrylic.SegmentedText(c, p, &a.proxyModeIdx, "手动", "PAC"); seg.Changed() {
+			a.applyProxyMode()
+		}
+		if a.proxyModeIdx == 1 {
+			ui.Text(c, "PAC 由本机 127.0.0.1 提供，按绕过列表和 mixed 端口生成。").FontSize(11).TextColor(p.InkSubtle)
+			if a.pacURL != "" {
+				ui.Text(c, "PAC："+a.pacURL).FontSize(11).TextColor(p.InkMuted).SingleLine()
+			}
+		}
 		ui.Row(c).Gap(12).AlignItems(ui.Center).Children(func() {
 			ui.Column(c).Gap(2).Children(func() {
 				ui.Text(c, "启用系统代理").FontSize(15).Bold()
@@ -39,5 +49,5 @@ func (a *App) pageSysProxy(c *ui.Context, p acrylic.Palette) {
 		}
 	})
 
-	ui.Text(c, "Windows 使用 WinINet 设置；macOS/Linux 的系统代理在后续版本接入。").FontSize(11).TextColor(p.InkSubtle)
+	ui.Text(c, "Windows 使用 WinINet；macOS 使用 networksetup；Linux 使用 GNOME gsettings。其他桌面环境会提示不支持。").FontSize(11).TextColor(p.InkSubtle)
 }
