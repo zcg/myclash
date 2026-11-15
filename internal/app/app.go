@@ -1167,7 +1167,6 @@ func (a *App) saveSettings() {
 	s := a.settings.Get()
 	acrylic.SetAppearance(s.UI.Theme)
 	if a.win != nil {
-		a.win.SetVibrancy(acrylic.NormalizeBlur(effectiveBlur(s.UI.Preset)).Vibrancy())
 		a.invalidate()
 	}
 	if (port != old.MixedPort || controller != old.ControllerPort) && a.state.View().Started {

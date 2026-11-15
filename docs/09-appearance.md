@@ -24,7 +24,7 @@
 | **液态玻璃（默认）** | MyGo `plugins/glass` 的窗口内 Liquid Glass（三端同一 shader） | 半透明色（0–100%） | 毛玻璃、折射与边缘高光；与系统亚克力无关 |
 | **透明** | 不铺底、不挂系统材质，直接显示桌面 | 半透明色（0–100%） | 想看穿窗口；0% 时只剩文字 |
 | **实色** | `Ground` 实铺 | 实色 | 远程桌面、低端机、提高对比度 |
-| **Windows 亚克力** | Windows 11 22H2+ 的 DWM `DWMWA_SYSTEMBACKDROP_TYPE` Acrylic | 半透明色（0–100%） | 仅 Windows 11 22H2+ 显示；Windows 10/macOS/Linux 不出现 |
+| **Windows 亚克力** | Windows 11 22H2+ 的 Acrylic（`SetWindowCompositionAttribute` 的 ACCENT_ENABLE_ACRYLICBLURBEHIND） | 半透明色（0–100%） | 仅 Windows 11 22H2+ 显示；Windows 10/macOS/Linux 不出现 |
 
 - 液态玻璃与 Windows 亚克力不是同一个东西：前者是 MyGo 插件的窗口内玻璃，三端一致；后者是 Windows DWM 的系统材质，只在满足版本条件的 Windows 上启用。
 - 液态玻璃的窗口底用 `glass.Glass{Style: glass.Regular}`；不挂系统 `Vibrancy`，避免在 Windows 上被 DWM 混成亚克力。
@@ -159,3 +159,4 @@ ui.Box(c).Absolute().Top(0).Left(0).Right(0).Height(74).PassThrough().
 - 不做每控件独立透明度。
 - 不给长文本/数据表铺玻璃。
 - 不做自定义着色器或背景图（M3 后再议）。
+
