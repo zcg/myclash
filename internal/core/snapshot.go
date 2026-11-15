@@ -7,7 +7,7 @@ import (
 
 const (
 	maxLogs        = 2000
-	maxConnections = 1500
+	maxConnections = 1000
 )
 
 // Snapshot is an immutable view of the running core for the UI.

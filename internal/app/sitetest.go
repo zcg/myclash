@@ -43,7 +43,8 @@ func (a *App) testSites() {
 
 	port := a.settings.Get().Core.MixedPort
 	proxyURL := &url.URL{Scheme: "http", Host: fmt.Sprintf("127.0.0.1:%d", port)}
-	tr := &http.Transport{Proxy: http.ProxyURL(proxyURL)}
+	tr := &http.Transport{Proxy: http.ProxyURL(proxyURL), DisableKeepAlives: true}
+	defer tr.CloseIdleConnections()
 	client := &http.Client{Transport: tr, Timeout: 9 * time.Second}
 	sem := make(chan struct{}, 6)
 	var wg sync.WaitGroup

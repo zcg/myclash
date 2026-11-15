@@ -120,7 +120,8 @@ func (a *App) measureSpeed(client *core.Client, group, name string, port int, sp
 	}()
 
 	proxyURL := &url.URL{Scheme: "http", Host: fmt.Sprintf("127.0.0.1:%d", port)}
-	tr := &http.Transport{Proxy: http.ProxyURL(proxyURL)}
+	tr := &http.Transport{Proxy: http.ProxyURL(proxyURL), DisableKeepAlives: true}
+	defer tr.CloseIdleConnections()
 	httpClient := &http.Client{Transport: tr, Timeout: 10 * time.Second}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, speedURL, nil)
 	if err != nil {

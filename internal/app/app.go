@@ -882,6 +882,40 @@ func (a *App) refreshProxies() {
 			return
 		}
 		a.mu.Lock()
+		valid := make(map[string]bool, len(proxies))
+		for name := range proxies {
+			valid[name] = true
+		}
+		for name := range a.delays {
+			if !valid[name] {
+				delete(a.delays, name)
+			}
+		}
+		for name := range a.delayErrs {
+			if !valid[name] {
+				delete(a.delayErrs, name)
+			}
+		}
+		for name := range a.speeds {
+			if !valid[name] {
+				delete(a.speeds, name)
+			}
+		}
+		for name := range a.speedErrs {
+			if !valid[name] {
+				delete(a.speedErrs, name)
+			}
+		}
+		for name := range a.lastProxyNow {
+			if !valid[name] {
+				delete(a.lastProxyNow, name)
+			}
+		}
+		for group := range a.proxyExpanded {
+			if !valid[group] {
+				delete(a.proxyExpanded, group)
+			}
+		}
 		for group, p := range proxies {
 			if p.Now == "" {
 				continue
