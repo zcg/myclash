@@ -264,7 +264,7 @@ func (a *App) refreshRules() {
 			a.setError(err)
 			return
 		}
-		a.win.Update(func() { a.state.SetRules(rules) })
+		a.updateUI(func() { a.state.SetRules(rules) })
 	}()
 }
 

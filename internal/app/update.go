@@ -84,7 +84,7 @@ func (a *App) installUpdate() {
 			a.mu.Lock()
 			a.updateProgress = float64(downloaded) / float64(total)
 			a.mu.Unlock()
-			a.win.Invalidate()
+			a.invalidate()
 		})
 		a.mu.Lock()
 		a.updateBusy = false

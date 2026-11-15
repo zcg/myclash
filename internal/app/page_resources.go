@@ -103,7 +103,7 @@ func (a *App) refreshProviders() {
 			a.setError(err)
 			return
 		}
-		a.win.Update(func() {
+		a.updateUI(func() {
 			a.proxyProviders = proxies
 			a.ruleProviders = rules
 		})
@@ -154,7 +154,7 @@ func (a *App) healthCheckProvider(name string) {
 			a.setError(err)
 			return
 		}
-		a.win.Update(func() {
+		a.updateUI(func() {
 			a.mu.Lock()
 			a.status = fmt.Sprintf("%s 健康检查完成", name)
 			a.mu.Unlock()

@@ -703,7 +703,7 @@ func (a *App) startCore() {
 		rules, _ := client.Rules(ctx)
 		proxyProviders, _ := client.ProxyProviders(ctx)
 		ruleProviders, _ := client.RuleProviders(ctx)
-		a.win.Update(func() {
+		a.updateUI(func() {
 			a.host = host
 			a.client = client
 			a.state.SetStarted(true)
@@ -748,7 +748,7 @@ func (a *App) paintConnections() {
 }
 
 func (a *App) invalidateWindows() {
-	a.win.Invalidate()
+	a.invalidate()
 	if a.floating != nil {
 		a.floating.Invalidate()
 	}
@@ -828,7 +828,7 @@ func (a *App) startStreams(client *core.Client) {
 			a.writeLogFile(e)
 			if time.Since(last) > 150*time.Millisecond {
 				last = time.Now()
-				a.win.Invalidate()
+				a.invalidate()
 			}
 		})
 		if err != nil && ctx.Err() == nil {
@@ -853,9 +853,9 @@ func (a *App) startStreams(client *core.Client) {
 				if err != nil {
 					continue
 				}
-				a.win.Update(func() {
+				a.updateUI(func() {
 					a.state.SetRules(rules)
-					a.win.Invalidate()
+					a.invalidate()
 				})
 			}
 		}
@@ -875,7 +875,7 @@ func (a *App) stopCore() {
 	if host != nil {
 		_ = host.Stop(context.Background())
 	}
-	a.win.Update(func() {
+	a.updateUI(func() {
 		a.state.SetStarted(false)
 		a.mu.Lock()
 		a.busy = false
@@ -962,7 +962,7 @@ func (a *App) refreshProxies() {
 			a.lastProxyNow[group] = p.Now
 		}
 		a.mu.Unlock()
-		a.win.Update(func() { a.state.SetProxies(proxies) })
+		a.updateUI(func() { a.state.SetProxies(proxies) })
 	}()
 }
 
@@ -1009,7 +1009,7 @@ func (a *App) focusProxy(group, name string) {
 	if name != "" {
 		go a.persistProxy(group, name)
 	}
-	a.win.Invalidate()
+	a.invalidate()
 }
 
 func (a *App) persistProxy(group, name string) {
@@ -1030,14 +1030,14 @@ func (a *App) selectProxy(group, name string) {
 	}
 	go a.persistProxy(group, name)
 	// Show the choice immediately; the REST call catches up in a moment.
-	a.win.Invalidate()
+	a.invalidate()
 	go func() {
 		if err := client.Select(context.Background(), group, name); err != nil {
 			a.mu.Lock()
 			a.proxyGroup, a.proxyNode = oldGroup, oldNode
 			a.mu.Unlock()
 			a.setError(err)
-			a.win.Invalidate()
+			a.invalidate()
 			return
 		}
 		go a.persistProxy(group, name)
@@ -1072,7 +1072,7 @@ func (a *App) testDelay(name string) {
 
 func (a *App) probeDelay(client *core.Client, name, testURL string) {
 	ms, err := client.Delay(context.Background(), name, testURL, 5000)
-	a.win.Update(func() {
+	a.updateUI(func() {
 		a.mu.Lock()
 		if err != nil {
 			a.delayErrs[name] = "超时"
@@ -1114,7 +1114,7 @@ func (a *App) testGroupDelay(group string) {
 			}()
 		}
 		wg.Wait()
-		a.win.Update(func() { a.status = group + " 延迟测试完成" })
+		a.updateUI(func() { a.status = group + " 延迟测试完成" })
 	}()
 }
 
@@ -1137,7 +1137,7 @@ func (a *App) applyMode(idx int) {
 				a.setError(err)
 				return
 			}
-			a.win.Update(func() { a.state.SetMode(mode) })
+			a.updateUI(func() { a.state.SetMode(mode) })
 		}()
 	}
 	a.refreshTrayMenu()
@@ -1166,7 +1166,7 @@ func (a *App) saveSettings() {
 	acrylic.SetAppearance(s.UI.Theme)
 	if a.win != nil {
 		a.win.SetVibrancy(acrylic.NormalizeBlur(effectiveBlur(s.UI.Preset)).Vibrancy())
-		a.win.Invalidate()
+		a.invalidate()
 	}
 	if (port != old.MixedPort || controller != old.ControllerPort) && a.state.View().Started {
 		a.restartCore()
@@ -1191,7 +1191,7 @@ func (a *App) addSubscription() {
 	a.invalidate()
 	go func() {
 		_, err := a.profiles.AddSubscription(context.Background(), "", url)
-		a.win.Update(func() {
+		a.updateUI(func() {
 			a.mu.Lock()
 			a.busy = false
 			if err != nil {
@@ -1230,7 +1230,7 @@ func (a *App) importProfile() {
 			a.setError(err)
 			return
 		}
-		a.win.Update(func() {
+		a.updateUI(func() {
 			a.mu.Lock()
 			a.status = "本地配置已导入"
 			a.mu.Unlock()
@@ -1284,6 +1284,12 @@ func (a *App) setBusyError(err error) {
 func (a *App) invalidate() {
 	if a.win != nil {
 		a.win.Invalidate()
+	}
+}
+
+func (a *App) updateUI(fn func()) {
+	if a.win != nil {
+		a.win.Update(fn)
 	}
 }
 
@@ -1341,7 +1347,7 @@ func (a *App) syncProfile(uid string) {
 	a.invalidate()
 	go func() {
 		_, err := a.profiles.Sync(context.Background(), uid)
-		a.win.Update(func() {
+		a.updateUI(func() {
 			a.mu.Lock()
 			a.busy = false
 			if err != nil {
@@ -1428,7 +1434,7 @@ func (a *App) applyAppearance() {
 		if preset != "solid" {
 			_ = a.win.SetBackgroundColor("#00000000")
 		}
-		a.win.Invalidate()
+		a.invalidate()
 	}
 }
 

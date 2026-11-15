@@ -29,7 +29,7 @@ func (a *App) speedErrFor(name string) (string, bool) {
 }
 
 func (a *App) speedFailed(name string) {
-	a.win.Update(func() {
+	a.updateUI(func() {
 		a.mu.Lock()
 		a.speedErrs[name] = "失败"
 		delete(a.speeds, name)
@@ -55,7 +55,7 @@ func (a *App) testSpeed(group, name string) {
 			a.speedFailed(name)
 			return
 		}
-		a.win.Update(func() {
+		a.updateUI(func() {
 			a.mu.Lock()
 			a.speeds[name] = mbps
 			delete(a.speedErrs, name)
@@ -87,14 +87,14 @@ func (a *App) testGroupSpeed(group string) {
 				a.speedFailed(member)
 				continue
 			}
-			a.win.Update(func() {
+			a.updateUI(func() {
 				a.mu.Lock()
 				a.speeds[member] = mbps
 				delete(a.speedErrs, member)
 				a.mu.Unlock()
 			})
 		}
-		a.win.Update(func() {
+		a.updateUI(func() {
 			a.mu.Lock()
 			a.status = group + " 测速完成"
 			a.mu.Unlock()

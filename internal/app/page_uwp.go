@@ -18,7 +18,7 @@ func (a *App) loadUWP() {
 	a.uwpBusy = true
 	go func() {
 		apps, err := platform.ListUWP()
-		a.win.Update(func() {
+		a.updateUI(func() {
 			a.uwpBusy = false
 			a.uwpLoaded = true
 			if err != nil {
@@ -113,7 +113,7 @@ func (a *App) setUWPLoopback(app platform.UWPApp, enable bool) {
 	a.uwpBusy = true
 	go func() {
 		err := platform.SetUWPLoopback(app.PackageFullName, enable)
-		a.win.Update(func() {
+		a.updateUI(func() {
 			a.uwpBusy = false
 			if err != nil {
 				a.setError(fmt.Errorf("设置 UWP 回环失败: %w", err))
@@ -135,7 +135,7 @@ func (a *App) setUWPLoopbackMany(rows []platform.UWPApp, enable bool) {
 	a.uwpBusy = true
 	go func() {
 		err := platform.SetUWPLoopbackMany(names, enable)
-		a.win.Update(func() {
+		a.updateUI(func() {
 			a.uwpBusy = false
 			if err != nil {
 				a.setError(fmt.Errorf("批量设置 UWP 回环失败: %w", err))
