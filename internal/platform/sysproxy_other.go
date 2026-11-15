@@ -20,3 +20,6 @@ func RelaunchElevated() error { return ErrUnsupported }
 
 // ForceQuit terminates this process immediately.
 func ForceQuit() { os.Exit(0) }
+
+// ArmKillWatchdog is a no-op where the native tray does not need it.
+func ArmKillWatchdog() {}

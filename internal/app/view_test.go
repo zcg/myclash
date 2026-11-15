@@ -130,3 +130,12 @@ func TestViewAppearanceModes(t *testing.T) {
 		}
 	}
 }
+
+func TestTunStackIndexUsesMips(t *testing.T) {
+	if got := tunStackIndex("mips"); got != 3 {
+		t.Fatalf("mips index = %d, want 3", got)
+	}
+	if got := tunStacks[tunStackIndex("mips")]; got != "mips" {
+		t.Fatalf("mips resolves to %q", got)
+	}
+}

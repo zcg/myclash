@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 
 	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/registry"
@@ -148,4 +149,14 @@ func RelaunchElevated() error {
 // ForceQuit terminates this process immediately.
 func ForceQuit() {
 	_ = windows.TerminateProcess(windows.CurrentProcess(), 0)
+}
+
+// ArmKillWatchdog starts a detached process that terminates this PID after a
+// short grace period. It is used only when the user asks to quit from the
+// native tray menu, where a stuck menu callback can otherwise keep the
+// process and its notification icon alive.
+func ArmKillWatchdog() {
+	cmd := exec.Command("cmd", "/c", fmt.Sprintf("ping -n 3 127.0.0.1 >nul & taskkill /F /PID %d", os.Getpid()))
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	_ = cmd.Start()
 }

@@ -1035,8 +1035,12 @@ func tunStackIndex(v string) int {
 		return 0
 	case "gvisor":
 		return 1
+	case "mixed":
+		return 2
+	case "mips":
+		return 3
 	}
-	return 2
+	return 3
 }
 
 func densityIndex(v string) int {

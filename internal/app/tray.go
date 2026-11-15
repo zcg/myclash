@@ -75,6 +75,7 @@ func (a *App) trayMenu() *mygo.Menu {
 		{Type: mygo.MenuItemSeparator},
 		{Label: "退出 myclash", Click: func(*mygo.MenuItem, *mygo.Window) {
 			a.forceQuit = true
+			platform.ArmKillWatchdog()
 			mygo.App.Quit()
 		}},
 	})
@@ -122,6 +123,7 @@ func (a *App) registerHotkeys() {
 
 func (a *App) quitApp() {
 	a.forceQuit = true
+	platform.ArmKillWatchdog()
 	// The native menu can keep the event loop busy; if a clean quit does not
 	// finish, terminate the process so Windows removes the notification icon.
 	time.AfterFunc(1200*time.Millisecond, platform.ForceQuit)
