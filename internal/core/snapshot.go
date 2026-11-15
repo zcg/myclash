@@ -65,6 +65,17 @@ func (s *State) Get() Snapshot {
 	return v
 }
 
+// View is Get for read-only UI frames: immutable slices are shared, only the
+// append-only logs and history are copied. Callers must not mutate the result.
+func (s *State) View() Snapshot {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	v := s.v
+	v.Logs = append([]LogEntry(nil), s.v.Logs...)
+	v.History = append([]RateSample(nil), s.v.History...)
+	return v
+}
+
 func (s *State) SetStarted(started bool) {
 	s.mu.Lock()
 	s.v.Started = started

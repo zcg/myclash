@@ -49,7 +49,7 @@ func (a *App) toggleFloating() {
 func (a *App) floatView(c *ui.Context) {
 	p := acrylic.For(a.dark)
 	c.SetTheme(a.uiTheme(p))
-	s := a.state.Get()
+	s := a.state.View()
 	ui.Column(c).Fill().Padding(10).DragWindow().Children(func() {
 		card := acrylic.Panel(c, p, 0.92).Fill().Padding(10)
 		card.Children(func() {

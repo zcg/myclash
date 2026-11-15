@@ -62,7 +62,7 @@ func (a *App) saveBaseProfile() {
 	uid := a.baseUID
 	a.baseUID = ""
 	a.baseEdit = nil
-	if a.profiles.Selected() == uid && a.state.Get().Started {
+	if a.profiles.Selected() == uid && a.state.View().Started {
 		a.restartCore()
 	}
 	a.invalidate()

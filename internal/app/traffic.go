@@ -49,7 +49,7 @@ func (a *App) recordTraffic(up, down int64) {
 		return
 	}
 	a.lastTrafficSave = now
-	s := a.state.Get()
+	s := a.state.View()
 	p := trafficPoint{
 		Time:      now,
 		Up:        up,

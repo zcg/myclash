@@ -35,7 +35,7 @@ func (a *App) paletteItems() []paletteItem {
 		nav("资源", "/resources"),
 		nav("设置", "/settings"),
 		{label: "操作 · 启动/停止内核", hint: "", run: func() {
-			if a.state.Get().Started {
+			if a.state.View().Started {
 				a.stopCore()
 			} else {
 				a.startCore()

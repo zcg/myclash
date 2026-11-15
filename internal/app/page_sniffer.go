@@ -64,7 +64,7 @@ func (a *App) saveSniffer() {
 		a.setError(err)
 		return
 	}
-	if a.state.Get().Started {
+	if a.state.View().Started {
 		a.restartCore()
 	}
 }

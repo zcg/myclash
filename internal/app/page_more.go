@@ -28,7 +28,7 @@ var connColumns = []ui.TableColumn{
 }
 
 func (a *App) pageConnections(c *ui.Context, p acrylic.Palette) {
-	s := a.state.Get()
+	s := a.state.View()
 	a.header(c, p, "连接", "实时会话、规则与流量")
 	ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
 		acrylic.SearchField(c, p, &a.connSearch, "搜索主机、进程、规则或链路")
@@ -141,7 +141,7 @@ var ruleColumns = []ui.TableColumn{
 }
 
 func (a *App) pageRules(c *ui.Context, p acrylic.Palette) {
-	s := a.state.Get()
+	s := a.state.View()
 	a.header(c, p, "规则", "按匹配顺序列出当前生效规则")
 	ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
 		acrylic.SearchField(c, p, &a.ruleSearch, "搜索类型、内容或策略")
@@ -190,7 +190,7 @@ func (a *App) pageRules(c *ui.Context, p acrylic.Palette) {
 }
 
 func (a *App) pageLogs(c *ui.Context, p acrylic.Palette) {
-	s := a.state.Get()
+	s := a.state.View()
 	logs := s.Logs
 	if a.logsPaused {
 		logs = a.frozenLogs
@@ -289,7 +289,7 @@ func (a *App) toggleLogsPaused() {
 		a.frozenLogs = nil
 		return
 	}
-	a.frozenLogs = append([]core.LogEntry(nil), a.state.Get().Logs...)
+	a.frozenLogs = append([]core.LogEntry(nil), a.state.View().Logs...)
 	a.logsPaused = true
 }
 

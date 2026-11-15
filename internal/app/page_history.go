@@ -12,7 +12,7 @@ func (a *App) pageTraffic(c *ui.Context, p acrylic.Palette) {
 	a.header(c, p, "流量", "按 30 秒采样的上下行历史；保留 7 天")
 	hist := a.trafficHistorySnapshot()
 	ui.Row(c).Gap(10).AlignItems(ui.Center).Wrap().Children(func() {
-		s := a.state.Get()
+		s := a.state.View()
 		ui.Textf(c, "本次累计 ↑ %s / ↓ %s", format.Bytes(s.TotalUp), format.Bytes(s.TotalDown)).
 			FontSize(11).TextColor(p.InkMuted)
 		ui.Spacer(c)

@@ -450,7 +450,7 @@ func (a *App) view(c *ui.Context) {
 			ui.Text(c, "myclash").FontSize(14).Bold()
 			ui.Text(c, "原生代理客户端").FontSize(11).TextColor(p.InkSubtle)
 			ui.Spacer(c)
-			s := a.state.Get()
+			s := a.state.View()
 			if s.Started {
 				acrylic.Chip(c, p, "运行中", p.Success)
 			} else {
@@ -531,7 +531,7 @@ func (a *App) view(c *ui.Context) {
 }
 
 func (a *App) statusStrip(c *ui.Context, p acrylic.Palette) {
-	s := a.state.Get()
+	s := a.state.View()
 	ui.Row(c).Height(30).Background(ui.Transparent).Padding(0, 24).Gap(14).AlignItems(ui.Center).
 		BorderWidth(1, 0, 0, 0).BorderColor(p.Hairline).Children(func() {
 		ui.Textf(c, "↓ %s", format.Rate(s.Down)).FontSize(11).TextColor(p.InkSubtle)
@@ -926,7 +926,7 @@ func (a *App) restoreProxySelection(client *core.Client, proxies map[string]core
 
 func (a *App) focusProxy(group, name string) {
 	if name == "" {
-		if p, ok := a.state.Get().Proxies[group]; ok {
+		if p, ok := a.state.View().Proxies[group]; ok {
 			name = p.Now
 		}
 	}
@@ -1095,7 +1095,7 @@ func (a *App) saveSettings() {
 		a.win.SetVibrancy(acrylic.NormalizeBlur(effectiveBlur(s.UI.Preset)).Vibrancy())
 		a.win.Invalidate()
 	}
-	if (port != old.MixedPort || controller != old.ControllerPort) && a.state.Get().Started {
+	if (port != old.MixedPort || controller != old.ControllerPort) && a.state.View().Started {
 		a.restartCore()
 	}
 	a.mu.Lock()
@@ -1129,7 +1129,7 @@ func (a *App) addSubscription() {
 			}
 			a.mu.Unlock()
 		})
-		if err == nil && !a.state.Get().Started {
+		if err == nil && !a.state.View().Started {
 			a.startCore()
 		}
 	}()
@@ -1162,7 +1162,7 @@ func (a *App) importProfile() {
 			a.status = "本地配置已导入"
 			a.mu.Unlock()
 		})
-		if !a.state.Get().Started {
+		if !a.state.View().Started {
 			a.startCore()
 		}
 	}()
@@ -1278,7 +1278,7 @@ func (a *App) syncProfile(uid string) {
 			}
 			a.mu.Unlock()
 		})
-		if err == nil && a.profiles.Selected() == uid && a.state.Get().Started {
+		if err == nil && a.profiles.Selected() == uid && a.state.View().Started {
 			a.restartCore()
 		}
 		a.invalidate()
@@ -1375,7 +1375,7 @@ func (a *App) toggleTUN() {
 	}
 	a.saveTUN()
 	if !a.tunEnable {
-		if a.state.Get().Started {
+		if a.state.View().Started {
 			a.restartCore()
 		}
 		return
@@ -1388,7 +1388,7 @@ func (a *App) toggleTUN() {
 		mygo.App.Quit()
 		return
 	}
-	if a.state.Get().Started {
+	if a.state.View().Started {
 		a.restartCore()
 	}
 }
@@ -1428,7 +1428,7 @@ func (a *App) toggleSystemProxy(on bool) {
 	if a.sysproxy == nil {
 		return
 	}
-	if on && !a.state.Get().Started {
+	if on && !a.state.View().Started {
 		a.systemProxy = false
 		a.setError(errors.New("先启动内核再开启系统代理"))
 		return
@@ -1504,7 +1504,7 @@ func (a *App) saveDNS() {
 	a.mu.Lock()
 	a.status = "DNS 设置已保存"
 	a.mu.Unlock()
-	if a.state.Get().Started {
+	if a.state.View().Started {
 		a.restartCore()
 	}
 }
@@ -1535,7 +1535,7 @@ func (a *App) saveOverride() {
 	a.mu.Lock()
 	a.status = "覆写已保存"
 	a.mu.Unlock()
-	if a.profiles.Selected() == current.UID && a.state.Get().Started {
+	if a.profiles.Selected() == current.UID && a.state.View().Started {
 		a.restartCore()
 	} else {
 		a.invalidate()
@@ -1554,7 +1554,7 @@ func (a *App) saveScriptOverride() {
 	a.mu.Lock()
 	a.status = "脚本覆写已保存"
 	a.mu.Unlock()
-	if a.profiles.Selected() == current.UID && a.state.Get().Started {
+	if a.profiles.Selected() == current.UID && a.state.View().Started {
 		a.restartCore()
 	} else {
 		a.invalidate()
@@ -1596,7 +1596,7 @@ func (a *App) toggleConnPaused() {
 		a.frozenConns = nil
 		return
 	}
-	a.frozenConns = append([]core.Connection(nil), a.state.Get().Connections...)
+	a.frozenConns = append([]core.Connection(nil), a.state.View().Connections...)
 	a.connPaused = true
 }
 
@@ -1641,7 +1641,7 @@ func (a *App) applyLogLevel(idx int) {
 		a.setError(err)
 		return
 	}
-	if a.state.Get().Started {
+	if a.state.View().Started {
 		a.restartCore()
 	}
 }
@@ -1691,7 +1691,7 @@ func (a *App) applyAdvanced() {
 		a.setError(err)
 		return
 	}
-	if a.state.Get().Started {
+	if a.state.View().Started {
 		a.restartCore()
 	}
 }

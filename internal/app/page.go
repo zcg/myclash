@@ -22,7 +22,7 @@ import (
 )
 
 func (a *App) pageOverview(c *ui.Context, p acrylic.Palette) {
-	s := a.state.Get()
+	s := a.state.View()
 	opacity := a.cardOpacity()
 
 	if _, ok := a.profiles.CurrentMeta(); !ok {
@@ -239,7 +239,7 @@ func (a *App) welcome(c *ui.Context, p acrylic.Palette, opacity float64) {
 	})
 }
 func (a *App) pageProxiesLegacy(c *ui.Context, p acrylic.Palette) {
-	s := a.state.Get()
+	s := a.state.View()
 	opacity := a.cardOpacity()
 	ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
 		ui.Column(c).Gap(2).Children(func() {
@@ -680,7 +680,7 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 
 	case "about":
 		ui.Text(c, "关于").FontSize(15).Bold()
-		ui.Textf(c, "myclash %s · mihomo %s", mygo.App.Version(), kernelVersion(a.state.Get().Version)).FontSize(12).TextColor(p.InkMuted)
+		ui.Textf(c, "myclash %s · mihomo %s", mygo.App.Version(), kernelVersion(a.state.View().Version)).FontSize(12).TextColor(p.InkMuted)
 		ui.Text(c, "GPL-3.0 · 源码与问题反馈见仓库").FontSize(11).TextColor(p.InkSubtle)
 		if acrylic.Button(c, p, "退出 myclash", false).Clicked() {
 			a.quitApp()

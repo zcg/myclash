@@ -52,7 +52,7 @@ func (a *App) pageTUN(c *ui.Context, p acrylic.Palette) {
 					}
 					return
 				}
-				if a.state.Get().Started {
+				if a.state.View().Started {
 					a.restartCore()
 				}
 			}
@@ -78,7 +78,7 @@ func (a *App) pageTUN(c *ui.Context, p acrylic.Palette) {
 		} else {
 			a.tunDiagRow(c, p, "内核注入", "未启用（需要管理员授权）")
 		}
-		a.tunDiagRow(c, p, "内核", startedText(a.state.Get().Started))
+		a.tunDiagRow(c, p, "内核", startedText(a.state.View().Started))
 		a.tunDiagRow(c, p, "网卡", interfaceText(a.tunDevice))
 		a.tunDiagRow(c, p, "系统代理", proxyText(a.systemProxy))
 		if a.tunEnable && !platform.IsElevated() {

@@ -15,7 +15,7 @@ import (
 // card. A card selects the node; the group header tests or sorts the whole
 // group instead of making the user click each member.
 func (a *App) pageProxies(c *ui.Context, p acrylic.Palette) {
-	s := a.state.Get()
+	s := a.state.View()
 	opacity := a.cardOpacity()
 	ui.Row(c).Gap(10).AlignItems(ui.Center).Wrap().Children(func() {
 		ui.Column(c).Gap(2).Children(func() {
