@@ -863,6 +863,14 @@ func (a *App) stopCore() {
 }
 
 func (a *App) restartCore() {
+	if a.attach {
+		if err := a.agentRequest("/restart"); err != nil {
+			a.setError(err)
+			return
+		}
+		a.setStatus("Agent 内核已重载")
+		return
+	}
 	// Use the same path as stop, so status, streams, connections and the
 	// state snapshot are all cleared before the new core starts.
 	a.stopCore()

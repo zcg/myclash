@@ -214,6 +214,9 @@ func (a *agentApp) setupTray() {
 				_ = cmd.Start()
 			}},
 			{Type: mygo.MenuItemSeparator},
+			{Label: "重启内核", Click: func(*mygo.MenuItem, *mygo.Window) {
+				_ = a.reloadCore()
+			}},
 			{Label: "退出 Agent", Click: func(*mygo.MenuItem, *mygo.Window) {
 				a.quit()
 			}},
@@ -279,6 +282,16 @@ func (a *agentApp) startControl() (string, string, error) {
 		}
 		if err := a.reloadCore(); err != nil {
 			_ = a.settings.Update(func(s *settings.Settings) { s.TUN.Enable = old })
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+	mux.HandleFunc("/restart", func(w http.ResponseWriter, r *http.Request) {
+		if !auth(w, r) {
+			return
+		}
+		if err := a.reloadCore(); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
