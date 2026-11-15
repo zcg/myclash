@@ -126,7 +126,7 @@ func (a *App) quitApp() {
 	platform.ArmKillWatchdog()
 	// The native menu can keep the event loop busy; if a clean quit does not
 	// finish, terminate the process so Windows removes the notification icon.
-	time.AfterFunc(1200*time.Millisecond, platform.ForceQuit)
+	time.AfterFunc(400*time.Millisecond, platform.ForceQuit)
 	if a.tray != nil {
 		a.tray.Destroy()
 		a.tray = nil
