@@ -2,9 +2,13 @@ package app
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,9 +23,11 @@ import (
 )
 
 type agentInfo struct {
-	Addr   string `json:"addr"`
-	Secret string `json:"secret"`
-	PID    int    `json:"pid"`
+	Addr         string `json:"addr"`
+	Secret       string `json:"secret"`
+	PID          int    `json:"pid"`
+	ControlAddr  string `json:"control_addr"`
+	ControlToken string `json:"control_token"`
 }
 
 func agentPath() string {
@@ -69,6 +75,8 @@ type agentApp struct {
 	profiles *config.Store
 	host     *core.Embedded
 	tray     *mygo.Tray
+	control  *http.Server
+	token    string
 }
 
 func runAgent() error {
@@ -139,7 +147,12 @@ func (a *agentApp) ready() {
 	}
 	a.host = host
 	ep := host.Endpoint()
-	if err := writeAgentInfo(agentInfo{Addr: ep.Addr, Secret: ep.Secret, PID: os.Getpid()}); err != nil {
+	controlAddr, token, err := a.startControl()
+	if err != nil {
+		_ = host.Stop(context.Background())
+		return
+	}
+	if err := writeAgentInfo(agentInfo{Addr: ep.Addr, Secret: ep.Secret, PID: os.Getpid(), ControlAddr: controlAddr, ControlToken: token}); err != nil {
 		_ = host.Stop(context.Background())
 		return
 	}
@@ -168,6 +181,64 @@ func (a *agentApp) setupTray() {
 		return
 	}
 	a.tray = tray
+}
+
+func (a *agentApp) startControl() (string, string, error) {
+	tokenBytes := make([]byte, 24)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		return "", "", err
+	}
+	token := hex.EncodeToString(tokenBytes)
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return "", "", err
+	}
+	mux := http.NewServeMux()
+	auth := func(w http.ResponseWriter, r *http.Request) bool {
+		if r.Header.Get("Authorization") != "Bearer "+token {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return false
+		}
+		return true
+	}
+	mux.HandleFunc("/sysproxy", func(w http.ResponseWriter, r *http.Request) {
+		if !auth(w, r) {
+			return
+		}
+		enable := r.URL.Query().Get("enabled") == "1"
+		s := a.settings.Get()
+		proxy := platform.NewSysProxy()
+		var err error
+		if enable {
+			err = proxy.Enable("127.0.0.1", s.Core.MixedPort, s.Proxy.Bypass)
+		} else {
+			err = proxy.Disable()
+		}
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		_ = a.settings.Update(func(s *settings.Settings) { s.Proxy.SystemEnabled = enable })
+		w.WriteHeader(http.StatusNoContent)
+	})
+	mux.HandleFunc("/tun", func(w http.ResponseWriter, r *http.Request) {
+		if !auth(w, r) {
+			return
+		}
+		http.Error(w, "TUN 不能通过 Agent 热切换，请在标准模式修改后重启 Agent", http.StatusNotImplemented)
+	})
+	mux.HandleFunc("/quit", func(w http.ResponseWriter, r *http.Request) {
+		if !auth(w, r) {
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+		a.quit()
+	})
+	srv := &http.Server{Handler: mux}
+	a.control = srv
+	a.token = token
+	go func() { _ = srv.Serve(ln) }()
+	return ln.Addr().String(), token, nil
 }
 
 func (a *agentApp) quit() {

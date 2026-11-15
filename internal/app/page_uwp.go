@@ -40,7 +40,7 @@ func (a *App) pageUWP(c *ui.Context, p acrylic.Palette) {
 		a.loadUWP()
 	}
 	ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
-		acrylic.SearchField(c, p, &a.uwpSearch, "搜索应用名或包名")
+		acrylic.SearchField(c, p, &a.uwpSearch, "搜索软件名、发布者或包名")
 		ui.Spacer(c)
 		if acrylic.Button(c, p, "刷新", a.uwpBusy).Clicked() {
 			a.uwpLoaded = false
@@ -57,7 +57,11 @@ func (a *App) pageUWP(c *ui.Context, p acrylic.Palette) {
 	q := strings.ToLower(strings.TrimSpace(a.uwpSearch))
 	var rows []platform.UWPApp
 	for _, app := range a.uwpApps {
-		if q == "" || strings.Contains(strings.ToLower(app.Name+" "+app.PackageFullName), q) {
+		label := app.DisplayName
+		if label == "" {
+			label = app.Name
+		}
+		if q == "" || strings.Contains(strings.ToLower(label+" "+app.Name+" "+app.Publisher+" "+app.PackageFullName), q) {
 			rows = append(rows, app)
 		}
 	}
@@ -65,13 +69,30 @@ func (a *App) pageUWP(c *ui.Context, p acrylic.Palette) {
 		ui.Text(c, "没有匹配的 UWP 应用。").TextColor(p.InkMuted)
 		return
 	}
+	ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+		ui.Textf(c, "%d 个应用", len(rows)).FontSize(11).TextColor(p.InkSubtle)
+		ui.Spacer(c)
+		if acrylic.Button(c, p, "全部允许回环", a.uwpBusy || len(rows) == 0).Clicked() {
+			a.setUWPLoopbackMany(rows, true)
+		}
+		if acrylic.Button(c, p, "全部移除", a.uwpBusy || len(rows) == 0).Clicked() {
+			a.setUWPLoopbackMany(rows, false)
+		}
+	})
 	ui.Column(c).Height(520).Background(p.Code).Radius(8).Padding(10).Clip().Children(func() {
 		ui.List(c, &a.uwpList, len(rows), func(i int) {
 			app := rows[i]
 			ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
 				ui.Column(c).Gap(2).Grow(1).Children(func() {
-					ui.Text(c, app.Name).FontSize(12).Bold().SingleLine()
-					ui.Text(c, app.PackageFullName).FontSize(10).TextColor(p.InkSubtle).SingleLine()
+					label := app.DisplayName
+					if label == "" {
+						label = app.Name
+					}
+					ui.Text(c, label).FontSize(12).Bold().SingleLine()
+					if app.Publisher != "" {
+						ui.Text(c, app.Publisher).FontSize(10).TextColor(p.InkSubtle).SingleLine()
+					}
+					ui.Text(c, app.PackageFullName).FontSize(9).TextColor(p.InkTertiary).SingleLine()
 				})
 				if app.Loopback {
 					if acrylic.Button(c, p, "移除回环", false).Clicked() {
@@ -96,6 +117,28 @@ func (a *App) setUWPLoopback(app platform.UWPApp, enable bool) {
 			a.uwpBusy = false
 			if err != nil {
 				a.setError(fmt.Errorf("设置 UWP 回环失败: %w", err))
+				return
+			}
+			a.loadUWP()
+		})
+	}()
+}
+
+func (a *App) setUWPLoopbackMany(rows []platform.UWPApp, enable bool) {
+	if a.uwpBusy {
+		return
+	}
+	names := make([]string, 0, len(rows))
+	for _, row := range rows {
+		names = append(names, row.PackageFullName)
+	}
+	a.uwpBusy = true
+	go func() {
+		err := platform.SetUWPLoopbackMany(names, enable)
+		a.win.Update(func() {
+			a.uwpBusy = false
+			if err != nil {
+				a.setError(fmt.Errorf("批量设置 UWP 回环失败: %w", err))
 				return
 			}
 			a.loadUWP()

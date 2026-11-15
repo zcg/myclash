@@ -7,9 +7,13 @@ import "errors"
 type UWPApp struct {
 	Name            string
 	PackageFullName string
+	DisplayName     string
+	Publisher       string
 	Loopback        bool
 }
 
 func ListUWP() ([]UWPApp, error) { return nil, errors.New("UWP loopback is Windows only") }
 
 func SetUWPLoopback(string, bool) error { return errors.New("UWP loopback is Windows only") }
+
+func SetUWPLoopbackMany([]string, bool) error { return errors.New("UWP loopback is Windows only") }
