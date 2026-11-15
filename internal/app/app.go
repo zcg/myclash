@@ -25,6 +25,12 @@ import (
 	"myclash/internal/ui/format"
 )
 
+type connRate struct {
+	up, down         int64
+	at               time.Time
+	upRate, downRate float64
+}
+
 // App is the composition root: it owns the window, the core host, the profile
 // store and every page's shared state. Pages are methods on *App, so they can
 // read state without importing this package.
@@ -57,93 +63,101 @@ type App struct {
 	errMsg string
 	status string
 
-	subURL          string
-	renameUID       string
-	renameText      string
-	mixed           string
-	controller      string
-	modeIdx         int
-	logLevelIdx     int
-	themeIdx        int
-	presetIdx       int
-	densityIdx      int
-	opacity         float64
-	scale           float64
-	monochromeIcons bool
-	hotkeyShow      string
-	hotkeyProxy     string
-	hotkeyTUN       string
-	hotkeyMode      string
-	settingsSection string
-	bypass          string
-	autoStart       bool
-	openAtLogin     bool
-	closeTray       bool
-	forceQuit       bool
-	logFile         *os.File
-	logMu           sync.Mutex
+	subURL           string
+	renameUID        string
+	renameText       string
+	mixed            string
+	controller       string
+	modeIdx          int
+	logLevelIdx      int
+	themeIdx         int
+	presetIdx        int
+	densityIdx       int
+	opacity          float64
+	scale            float64
+	monochromeIcons  bool
+	hotkeyShow       string
+	hotkeyProxy      string
+	hotkeyTUN        string
+	hotkeyMode       string
+	hotkeyQuit       string
+	settingsSection  string
+	bypass           string
+	autoStart        bool
+	openAtLogin      bool
+	closeTray        bool
+	forceQuit        bool
+	logFile          *os.File
+	logMu            sync.Mutex
+	paintMu          sync.Mutex
+	lastTrafficPaint time.Time
+	lastConnPaint    time.Time
 
-	connState       ui.ListState
-	ruleState       ui.ListState
-	logState        ui.ListState
-	connSearch      string
-	ruleSearch      string
-	logSearch       string
-	proxySearch     string
-	proxySortIdx    int
-	proxyExpanded   map[string]bool
-	proxyColsIdx    int
-	proxyLastSearch string
-	proxyGroup      string
-	proxyNode       string
-	logsPaused      bool
-	connPaused      bool
-	frozenConns     []core.Connection
-	frozenLogs      []core.LogEntry
-	override        *editor.State
-	overrideUID     string
-	baseEdit        *editor.State
-	baseUID         string
-	dnsName         string
-	dnsEnable       bool
-	dnsListen       string
-	dnsNameservers  string
-	dnsFallback     string
-	dnsFakeIPRange  string
-	dnsModeIdx      int
-	unifiedDelay    bool
-	tcpConcurrent   bool
-	findProcessIdx  int
-	fingerprint     string
-	iface           string
-	routingMark     string
-	sniffEnable     bool
-	sniffForceDNS   bool
-	sniffOverride   bool
-	sniffPureIP     bool
-	sniffHTTP       string
-	sniffTLS        string
-	sniffQUIC       string
-	sniffSkip       string
-	sniffForce      string
-	sniffSkipSrc    string
-	sniffSkipDst    string
-	tunEnable       bool
-	tunStackIdx     int
-	tunDevice       string
-	tunAutoRoute    bool
-	tunStrictRoute  bool
-	tunDNSHijack    bool
-	tunAutoDetect   bool
-	tunProxyWasOn   bool
-	delays          map[string]int
-	delayErrs       map[string]string
-	speeds          map[string]float64
-	speedErrs       map[string]string
-	proxyProviders  []core.Provider
-	ruleProviders   []core.Provider
-	proxyProvState  ui.ListState
-	ruleProvState   ui.ListState
+	connState        ui.ListState
+	ruleState        ui.ListState
+	logState         ui.ListState
+	connSearch       string
+	ruleSearch       string
+	logSearch        string
+	proxySearch      string
+	proxySortIdx     int
+	proxyExpanded    map[string]bool
+	proxyColsIdx     int
+	proxyLastSearch  string
+	proxyGroup       string
+	proxyNode        string
+	lastProxyNow     map[string]string
+	connRates        map[string]connRate
+	connSortIdx      int
+	scrollProxyGroup string
+	logsPaused       bool
+	connPaused       bool
+	frozenConns      []core.Connection
+	frozenLogs       []core.LogEntry
+	override         *editor.State
+	overrideUID      string
+	baseEdit         *editor.State
+	baseUID          string
+	dnsName          string
+	dnsEnable        bool
+	dnsListen        string
+	dnsNameservers   string
+	dnsFallback      string
+	dnsFakeIPRange   string
+	dnsModeIdx       int
+	unifiedDelay     bool
+	tcpConcurrent    bool
+	findProcessIdx   int
+	fingerprint      string
+	iface            string
+	routingMark      string
+	sniffEnable      bool
+	sniffForceDNS    bool
+	sniffOverride    bool
+	sniffPureIP      bool
+	sniffHTTP        string
+	sniffTLS         string
+	sniffQUIC        string
+	sniffSkip        string
+	sniffForce       string
+	sniffSkipSrc     string
+	sniffSkipDst     string
+	tunEnable        bool
+	tunStackIdx      int
+	tunDevice        string
+	tunAutoRoute     bool
+	tunStrictRoute   bool
+	tunDNSHijack     bool
+	tunAutoDetect    bool
+	tunProxyWasOn    bool
+	delays           map[string]int
+	delayErrs        map[string]string
+	speeds           map[string]float64
+	speedErrs        map[string]string
+	proxyProviders   []core.Provider
+	ruleProviders    []core.Provider
+	proxyProvState   ui.ListState
+	ruleProvState    ui.ListState
 }
 
 // Run starts the application. It returns immediately when another instance is
@@ -219,11 +233,20 @@ func (a *App) ready() {
 	a.hotkeyProxy = s.Hotkeys.SystemProxy
 	a.hotkeyTUN = s.Hotkeys.TUN
 	a.hotkeyMode = s.Hotkeys.Mode
+	a.hotkeyQuit = s.Hotkeys.Quit
+	a.proxyGroup = s.Proxy.LastGroup
+	a.proxyNode = s.Proxy.LastNode
 	a.delays = map[string]int{}
 	a.delayErrs = map[string]string{}
 	a.speeds = map[string]float64{}
 	a.speedErrs = map[string]string{}
 	a.proxyExpanded = map[string]bool{}
+	a.lastProxyNow = map[string]string{}
+	a.connRates = map[string]connRate{}
+	// Pages cross-fade instead of snapping; springs keep a quick "push"
+	// responsive when the user is switching back and forth.
+	a.router.Transition = ui.TransitionMatch
+	a.router.Animation = &ui.Smooth
 	a.proxyColsIdx = 3
 	a.proxySortIdx = 1
 	a.bypass = strings.Join(s.Proxy.Bypass, ";")
@@ -562,7 +585,65 @@ func (a *App) startCore() {
 			a.mu.Unlock()
 		})
 		a.startStreams(client)
+		a.restoreProxySelection(client, proxies)
 	}()
+}
+
+// Traffic and connection streams are event driven; repainting each event
+// burns frames without making the UI smoother. Coalesce them to a stable
+// frame budget while still keeping every sample in the state.
+func (a *App) paintTraffic() {
+	a.paintMu.Lock()
+	if time.Since(a.lastTrafficPaint) < 50*time.Millisecond {
+		a.paintMu.Unlock()
+		return
+	}
+	a.lastTrafficPaint = time.Now()
+	a.paintMu.Unlock()
+	a.win.Invalidate()
+}
+
+func (a *App) paintConnections() {
+	a.paintMu.Lock()
+	if time.Since(a.lastConnPaint) < 120*time.Millisecond {
+		a.paintMu.Unlock()
+		return
+	}
+	a.lastConnPaint = time.Now()
+	a.paintMu.Unlock()
+	a.win.Invalidate()
+}
+
+func (a *App) trackConnRates(conns []core.Connection) {
+	now := time.Now()
+	next := make(map[string]connRate, len(conns))
+	a.mu.Lock()
+	for _, c := range conns {
+		r := connRate{up: c.Upload, down: c.Download, at: now}
+		if prev, ok := a.connRates[c.ID]; ok {
+			if dt := now.Sub(prev.at).Seconds(); dt > 0 {
+				if c.Upload >= prev.up {
+					r.upRate = float64(c.Upload-prev.up) / dt
+				}
+				if c.Download >= prev.down {
+					r.downRate = float64(c.Download-prev.down) / dt
+				}
+			}
+		}
+		next[c.ID] = r
+	}
+	a.connRates = next
+	a.mu.Unlock()
+}
+
+func (a *App) connRateFor(id string) (float64, float64) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	r, ok := a.connRates[id]
+	if !ok {
+		return 0, 0
+	}
+	return r.upRate, r.downRate
 }
 
 func (a *App) startStreams(client *core.Client) {
@@ -581,7 +662,7 @@ func (a *App) startStreams(client *core.Client) {
 			dt := now.Sub(last)
 			last = now
 			a.state.SetTraffic(up, down, dt)
-			a.win.Invalidate()
+			a.paintTraffic()
 		})
 		if err != nil && ctx.Err() == nil {
 			a.setError(fmt.Errorf("流量流断开: %w", err))
@@ -590,8 +671,9 @@ func (a *App) startStreams(client *core.Client) {
 
 	go func() {
 		err := client.Connections(ctx, func(v core.Connections) {
+			a.trackConnRates(v.Connections)
 			a.state.SetConnections(v)
-			a.win.Invalidate()
+			a.paintConnections()
 		})
 		if err != nil && ctx.Err() == nil {
 			a.setError(fmt.Errorf("连接流断开: %w", err))
@@ -690,26 +772,96 @@ func (a *App) refreshProxies() {
 			a.setError(err)
 			return
 		}
+		a.mu.Lock()
+		for group, p := range proxies {
+			if p.Now == "" {
+				continue
+			}
+			if old, seen := a.lastProxyNow[group]; seen && old != p.Now {
+				a.proxyGroup, a.proxyNode = group, p.Now
+			}
+			a.lastProxyNow[group] = p.Now
+		}
+		a.mu.Unlock()
 		a.win.Update(func() { a.state.SetProxies(proxies) })
 	}()
+}
+
+func (a *App) restoreProxySelection(client *core.Client, proxies map[string]core.Proxy) {
+	a.mu.Lock()
+	group, node := a.proxyGroup, a.proxyNode
+	a.mu.Unlock()
+	p, ok := proxies[group]
+	if !ok || node == "" {
+		return
+	}
+	known := node == p.Now
+	for _, member := range p.All {
+		if member == node {
+			known = true
+			break
+		}
+	}
+	if !known {
+		a.mu.Lock()
+		a.proxyGroup, a.proxyNode = "", ""
+		a.mu.Unlock()
+		return
+	}
+	if p.Now == node {
+		return
+	}
+	go func() {
+		if err := client.Select(context.Background(), group, node); err == nil {
+			a.refreshProxies()
+		}
+	}()
+}
+
+func (a *App) focusProxy(group, name string) {
+	if name == "" {
+		if p, ok := a.state.Get().Proxies[group]; ok {
+			name = p.Now
+		}
+	}
+	a.mu.Lock()
+	a.proxyGroup, a.proxyNode = group, name
+	a.mu.Unlock()
+	if name != "" {
+		go a.persistProxy(group, name)
+	}
+	a.win.Invalidate()
+}
+
+func (a *App) persistProxy(group, name string) {
+	_ = a.settings.Update(func(s *settings.Settings) {
+		s.Proxy.LastGroup = group
+		s.Proxy.LastNode = name
+	})
 }
 
 func (a *App) selectProxy(group, name string) {
 	a.mu.Lock()
 	client := a.client
+	oldGroup, oldNode := a.proxyGroup, a.proxyNode
+	a.proxyGroup, a.proxyNode = group, name
 	a.mu.Unlock()
 	if client == nil {
 		return
 	}
+	go a.persistProxy(group, name)
+	// Show the choice immediately; the REST call catches up in a moment.
+	a.win.Invalidate()
 	go func() {
 		if err := client.Select(context.Background(), group, name); err != nil {
+			a.mu.Lock()
+			a.proxyGroup, a.proxyNode = oldGroup, oldNode
+			a.mu.Unlock()
 			a.setError(err)
+			a.win.Invalidate()
 			return
 		}
-		a.mu.Lock()
-		a.proxyGroup = group
-		a.proxyNode = name
-		a.mu.Unlock()
+		go a.persistProxy(group, name)
 		a.refreshProxies()
 	}()
 }

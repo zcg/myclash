@@ -131,14 +131,18 @@ func (a *App) pageOverview(c *ui.Context, p acrylic.Palette) {
 
 		nodeCard := a.card(c, p, opacity).Padding(a.cardPad()).Grow(1)
 		nodeCard.Children(func() {
+			group, proxy, ok := a.currentNode(s)
 			ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
 				ui.Text(c, "当前节点").Bold()
 				ui.Spacer(c)
 				if acrylic.Button(c, p, "代理页", false).Clicked() {
+					if ok {
+						a.proxyExpanded[group] = true
+						a.scrollProxyGroup = group
+					}
 					a.router.Push("/proxies")
 				}
 			})
-			group, proxy, ok := a.currentNode(s)
 			if !ok {
 				ui.Text(c, "内核启动后显示当前节点。").TextColor(p.InkSubtle)
 				return
@@ -527,8 +531,11 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 
 	case "about":
 		ui.Text(c, "关于").FontSize(15).Bold()
-		ui.Textf(c, "myclash 0.1.2 · mihomo %s", kernelVersion(a.state.Get().Version)).FontSize(12).TextColor(p.InkMuted)
+		ui.Textf(c, "myclash %s · mihomo %s", mygo.App.Version(), kernelVersion(a.state.Get().Version)).FontSize(12).TextColor(p.InkMuted)
 		ui.Text(c, "GPL-3.0 · 源码与问题反馈见仓库").FontSize(11).TextColor(p.InkSubtle)
+		if acrylic.Button(c, p, "退出 myclash", false).Clicked() {
+			a.quitApp()
+		}
 
 	case "advanced":
 		ui.Text(c, "高级内核").FontSize(15).Bold()
@@ -575,12 +582,16 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 			ui.TextInput(c, &a.hotkeyTUN).Label("TUN").Width(220)
 			ui.TextInput(c, &a.hotkeyMode).Label("切换模式").Width(220)
 		})
+		ui.Row(c).Gap(12).Wrap().Children(func() {
+			ui.TextInput(c, &a.hotkeyQuit).Label("退出应用").Width(220)
+		})
 		if acrylic.PrimaryButton(c, p, "保存并注册", false).Clicked() {
 			if err := a.settings.Update(func(s *settings.Settings) {
 				s.Hotkeys.Show = a.hotkeyShow
 				s.Hotkeys.SystemProxy = a.hotkeyProxy
 				s.Hotkeys.TUN = a.hotkeyTUN
 				s.Hotkeys.Mode = a.hotkeyMode
+				s.Hotkeys.Quit = a.hotkeyQuit
 			}); err != nil {
 				a.setError(err)
 				return
@@ -667,27 +678,42 @@ func (a *App) currentNode(s core.Snapshot) (string, core.Proxy, bool) {
 	group, node := a.proxyGroup, a.proxyNode
 	a.mu.Unlock()
 	if group != "" {
-		if p, ok := s.Proxies[group]; ok && p.Now != "" {
-			if node != "" {
-				p.Now = node
+		if p, ok := s.Proxies[group]; ok {
+			if node == "" || node == p.Now {
+				if p.Now != "" {
+					return group, p, true
+				}
+			} else {
+				for _, member := range p.All {
+					if member == node {
+						p.Now = node
+						return group, p, true
+					}
+				}
 			}
-			return group, p, true
 		}
-		if p, ok := s.Proxies[node]; ok && p.Now != "" {
-			return node, p, true
+	}
+	if p, ok := s.Proxies["GLOBAL"]; ok && realNode(p.Now) {
+		return "GLOBAL", p, true
+	}
+	for _, g := range s.Groups {
+		if p, ok := s.Proxies[g]; ok && realNode(p.Now) {
+			return g, p, true
 		}
 	}
 	if p, ok := s.Proxies["GLOBAL"]; ok && p.Now != "" {
 		return "GLOBAL", p, true
 	}
-	for _, g := range s.Groups {
-		if p, ok := s.Proxies[g]; ok && p.Now != "" {
-			return g, p, true
-		}
-	}
 	return "", core.Proxy{}, false
 }
 
+func realNode(name string) bool {
+	switch name {
+	case "", "DIRECT", "REJECT", "REJECT-DROP", "PASS":
+		return false
+	}
+	return true
+}
 func kernelVersion(core string) string {
 	if v := mihomoVersion(); v != "" {
 		return v

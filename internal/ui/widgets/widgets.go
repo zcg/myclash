@@ -45,7 +45,8 @@ func StatCard(c *ui.Context, p acrylic.Palette, opacity float64, label, value, n
 				ui.Icon(c, icon).FontSize(15).TextColor(p.InkSubtle)
 			}
 		})
-		ui.Text(c, value).FontSize(26).Bold().TextColor(color)
+		ui.Text(c, value).FontSize(26).Bold().TextColor(color).
+			ContentTransition(ui.ContentTransition{Numeric: true})
 		if note != "" {
 			ui.Text(c, note).FontSize(11).TextColor(p.InkMuted)
 		}

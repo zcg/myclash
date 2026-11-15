@@ -2,6 +2,8 @@ package app
 
 import (
 	_ "embed"
+	"fmt"
+	"os"
 	"time"
 
 	"github.com/egoist/mygo"
@@ -20,6 +22,7 @@ func (a *App) setupTray() {
 		Menu:    a.trayMenu(),
 	})
 	if err != nil {
+		a.setError(fmt.Errorf("托盘初始化失败: %w", err))
 		return
 	}
 	a.tray = tray
@@ -117,17 +120,33 @@ func (a *App) registerHotkeys() {
 		a.applyMode(a.modeIdx)
 		a.refreshTrayMenu()
 	})
+	register(a.hotkeyQuit, a.quitApp)
+	// Quitting must not depend on a profile that may have cleared its hotkeys.
+	register("CmdOrCtrl+Shift+Q", a.quitApp)
 }
 
 func (a *App) quitApp() {
 	a.forceQuit = true
-	platform.ArmKillWatchdog()
-	// The native menu can keep the event loop busy; if a clean quit does not
-	// finish, terminate the process so Windows removes the notification icon.
-	time.AfterFunc(400*time.Millisecond, platform.ForceQuit)
+	// Remove the notification icon first; the window and its menu callback can
+	// be the very thing that is stuck.
 	if a.tray != nil {
 		a.tray.Destroy()
 		a.tray = nil
 	}
-	go mygo.App.Quit()
+	platform.ArmKillWatchdog()
+	// Stop the embedded core so Wintun and its routes are released, but never
+	// let a stuck shutdown keep the process alive. App.Quit depends on the
+	// native event loop finishing; in this path that is exactly what is broken.
+	go func() {
+		done := make(chan struct{})
+		go func() {
+			a.stopCore()
+			close(done)
+		}()
+		select {
+		case <-done:
+		case <-time.After(1500 * time.Millisecond):
+		}
+		os.Exit(0)
+	}()
 }

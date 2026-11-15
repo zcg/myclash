@@ -87,7 +87,10 @@ func (a *App) monoSidebar(c *ui.Context, p acrylic.Palette) {
 					Cursor(ui.CursorPointer)
 				if selected {
 					row.Background(p.WashSelected)
+				} else if row.Hovered() {
+					row.Background(p.WashHover)
 				}
+				row = acrylic.Fade(row)
 				row.Children(func() {
 					color := p.InkSubtle
 					if selected {

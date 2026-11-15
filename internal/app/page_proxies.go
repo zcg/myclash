@@ -72,6 +72,10 @@ func (a *App) pageProxies(c *ui.Context, p acrylic.Palette) {
 		g := s.Proxies[group]
 		expanded := a.proxyExpanded[group]
 		card := a.panel(c, p, opacity).Padding(a.cardPad())
+		if a.scrollProxyGroup == group {
+			a.scrollProxyGroup = ""
+			card = card.ScrollIntoView(ui.ScrollIntoViewOptions{Block: ui.ScrollCenter, Animation: &ui.Smooth})
+		}
 		card.Children(func() {
 			ui.Row(c).Gap(8).AlignItems(ui.Center).Wrap().Children(func() {
 				label := "展开"
@@ -85,7 +89,7 @@ func (a *App) pageProxies(c *ui.Context, p acrylic.Palette) {
 				acrylic.Chip(c, p, g.Type, p.InkSubtle)
 				acrylic.Chip(c, p, fmt.Sprintf("%d 节点", len(g.All)), p.InkSubtle)
 				ui.Spacer(c)
-				ui.Text(c, "当前 "+g.Now).FontSize(11).TextColor(p.InkMuted)
+				ui.Text(c, "当前 "+g.Now).FontSize(11).TextColor(p.InkMuted).SingleLine()
 				if acrylic.Button(c, p, "统一测延迟", false).Clicked() {
 					a.testGroupDelay(group)
 				}
@@ -116,29 +120,30 @@ func (a *App) pageProxies(c *ui.Context, p acrylic.Palette) {
 func (a *App) proxyNodeCard(c *ui.Context, p acrylic.Palette, s core.Snapshot, group, member string, current bool) {
 	info := s.Proxies[member]
 	t := c.Theme()
-	node := ui.Column(c).FillWidth().MinHeight(88).Padding(t.Space(3)).Gap(4).Radius(10).
+	node := ui.Column(c).FillWidth().MinHeight(104).Padding(t.Space(3)).Gap(4).Radius(10).
 		Background(p.WashChip).Border(1, p.Hairline).Cursor(ui.CursorPointer)
 	if current {
 		node.Background(p.Selection).Border(1, p.Accent)
 	}
 	node.Children(func() {
-		ui.Text(c, member).FontSize(12).Bold().SingleLine()
+		ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
+			ui.Text(c, member).FontSize(12).Bold().SingleLine().Grow(1)
+			if current {
+				acrylic.Chip(c, p, "当前", p.Success)
+			}
+		})
 		ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
 			typ := info.Type
 			if typ == "" {
 				typ = "节点"
 			}
-			ui.Text(c, typ).FontSize(10).TextColor(p.InkSubtle)
-			ui.Spacer(c)
-			if current {
-				acrylic.Chip(c, p, "当前", p.Success)
-			}
+			ui.Text(c, typ).FontSize(10).TextColor(p.InkSubtle).SingleLine()
 		})
 		ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
 			if ms, ok := a.delayFor(member); ok {
 				ui.Textf(c, "%d ms", ms).FontSize(10).TextColor(p.InkMuted)
 			} else if msg, ok := a.delayErrFor(member); ok {
-				ui.Text(c, msg).FontSize(10).TextColor(p.Danger)
+				ui.Text(c, msg).FontSize(10).TextColor(p.Danger).SingleLine()
 			} else {
 				ui.Text(c, "未测延迟").FontSize(10).TextColor(p.InkSubtle)
 			}
@@ -146,9 +151,27 @@ func (a *App) proxyNodeCard(c *ui.Context, p acrylic.Palette, s core.Snapshot, g
 				ui.Textf(c, "%.1f Mbps", mbps).FontSize(10).TextColor(p.InkMuted)
 			}
 		})
+		ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
+			if acrylic.Button(c, p, "延迟", false).Clicked() {
+				a.testDelay(member)
+			}
+			if acrylic.Button(c, p, "测速", false).Clicked() {
+				a.testSpeed(group, member)
+			}
+			ui.Spacer(c)
+			if !current {
+				if acrylic.Button(c, p, "切换", false).Clicked() {
+					a.selectProxy(group, member)
+				}
+			}
+		})
 	})
-	if node.Clicked() && !current {
-		a.selectProxy(group, member)
+	if node.Clicked() {
+		if current {
+			a.focusProxy(group, member)
+		} else {
+			a.selectProxy(group, member)
+		}
 	}
 }
 
@@ -198,10 +221,10 @@ func (a *App) proxyColumns() int {
 	case 1:
 		return 3
 	case 2:
-		return 4
+		return 3
 	}
 	if a.win == nil {
-		return 4
+		return 3
 	}
 	w, _ := a.win.Size()
 	scale := a.settings.Get().UI.Scale
@@ -209,12 +232,12 @@ func (a *App) proxyColumns() int {
 		scale = 1
 	}
 	content := float64(w)/scale - 260
-	cols := int(content / 250)
+	cols := int(content / 300)
 	if cols < 2 {
 		cols = 2
 	}
-	if cols > 5 {
-		cols = 5
+	if cols > 3 {
+		cols = 3
 	}
 	return cols
 }

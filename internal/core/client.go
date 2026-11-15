@@ -133,23 +133,23 @@ func (c *Client) do(ctx context.Context, method, path string, body, out any) err
 	return json.NewDecoder(resp.Body).Decode(out)
 }
 
-// Connections streams the full connection snapshot about once per second.
+// Connections polls the snapshot endpoint. /connections is a normal GET on
+// the Clash API, not a push stream; reading it as a stream leaves the page
+// empty after the first frame.
 func (c *Client) Connections(ctx context.Context, fn func(Connections)) error {
-	body, err := c.streamGet(ctx, "/connections")
-	if err != nil {
-		return err
-	}
-	defer body.Close()
-	dec := json.NewDecoder(body)
+	ticker := time.NewTicker(800 * time.Millisecond)
+	defer ticker.Stop()
 	for {
 		var v Connections
-		if err := dec.Decode(&v); err != nil {
-			if errors.Is(err, io.EOF) || ctx.Err() != nil {
-				return ctx.Err()
-			}
+		if err := c.do(ctx, http.MethodGet, "/connections", nil, &v); err != nil {
 			return err
 		}
 		fn(v)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+		}
 	}
 }
 

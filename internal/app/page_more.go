@@ -2,6 +2,8 @@ package app
 
 import (
 	"fmt"
+	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -15,12 +17,14 @@ import (
 
 var connColumns = []ui.TableColumn{
 	{Title: "主机", Width: 0},
+	{Title: "进程", Width: 120},
 	{Title: "规则", Width: 0},
 	{Title: "链路", Width: 0},
-	{Title: "上传", Width: 90, Align: ui.End},
-	{Title: "下载", Width: 90, Align: ui.End},
-	{Title: "时长", Width: 80, Align: ui.End},
-	{Title: "操作", Width: 72, Align: ui.End},
+	{Title: "实时 ↑/↓", Width: 130, Align: ui.End},
+	{Title: "上传", Width: 78, Align: ui.End},
+	{Title: "下载", Width: 78, Align: ui.End},
+	{Title: "时长", Width: 70, Align: ui.End},
+	{Title: "操作", Width: 64, Align: ui.End},
 }
 
 func (a *App) pageConnections(c *ui.Context, p acrylic.Palette) {
@@ -48,6 +52,14 @@ func (a *App) pageConnections(c *ui.Context, p acrylic.Palette) {
 	} else {
 		rows = filterConnections(s.Connections, a.connSearch)
 	}
+	sortConnections(a, rows, a.connSortIdx)
+	ui.Row(c).Gap(12).AlignItems(ui.Center).Wrap().Children(func() {
+		ui.Text(c, "排序").FontSize(11).TextColor(p.InkSubtle)
+		acrylic.SegmentedText(c, p, &a.connSortIdx, "时间", "上传", "下载", "速率")
+		ui.Spacer(c)
+		ui.Textf(c, "连接 %d · 累计 ↑ %s / ↓ %s", len(rows), format.Bytes(s.ConnUpload), format.Bytes(s.ConnDown)).
+			FontSize(11).TextColor(p.InkMuted)
+	})
 	if len(rows) == 0 {
 		ui.Text(c, "当前没有匹配的连接。").TextColor(p.InkMuted)
 		return
@@ -59,22 +71,54 @@ func (a *App) pageConnections(c *ui.Context, p acrylic.Palette) {
 			case 0:
 				ui.Text(c, connHost(conn)).SingleLine()
 			case 1:
-				ui.Text(c, conn.Rule).SingleLine()
+				ui.Text(c, connProcess(conn)).SingleLine()
 			case 2:
-				ui.Text(c, strings.Join(conn.Chains, " → ")).SingleLine()
+				ui.Text(c, conn.Rule).SingleLine()
 			case 3:
-				ui.Text(c, format.Bytes(conn.Upload)).SingleLine()
+				ui.Text(c, strings.Join(conn.Chains, " → ")).SingleLine()
 			case 4:
-				ui.Text(c, format.Bytes(conn.Download)).SingleLine()
+				up, down := a.connRateFor(conn.ID)
+				ui.Textf(c, "↑%s ↓%s", format.Rate(int64(up)), format.Rate(int64(down))).FontSize(11).SingleLine()
 			case 5:
-				ui.Text(c, time.Since(conn.Start).Round(time.Second).String()).SingleLine()
+				ui.Text(c, format.Bytes(conn.Upload)).SingleLine()
 			case 6:
+				ui.Text(c, format.Bytes(conn.Download)).SingleLine()
+			case 7:
+				ui.Text(c, time.Since(conn.Start).Round(time.Second).String()).SingleLine()
+			case 8:
 				if acrylic.Button(c, p, "关闭", false).Clicked() {
 					a.closeConnection(conn.ID)
 				}
 			}
 		}).Grow(1)
 	})
+}
+
+func connProcess(c core.Connection) string {
+	if c.Metadata.Process != "" {
+		return c.Metadata.Process
+	}
+	if c.Metadata.ProcessPath != "" {
+		return filepath.Base(c.Metadata.ProcessPath)
+	}
+	return "—"
+}
+
+func sortConnections(a *App, rows []core.Connection, by int) {
+	switch by {
+	case 1:
+		sort.SliceStable(rows, func(i, j int) bool { return rows[i].Upload > rows[j].Upload })
+	case 2:
+		sort.SliceStable(rows, func(i, j int) bool { return rows[i].Download > rows[j].Download })
+	case 3:
+		rate := func(c core.Connection) float64 {
+			up, down := a.connRateFor(c.ID)
+			return up + down
+		}
+		sort.SliceStable(rows, func(i, j int) bool { return rate(rows[i]) > rate(rows[j]) })
+	default:
+		sort.SliceStable(rows, func(i, j int) bool { return rows[i].Start.After(rows[j].Start) })
+	}
 }
 
 var ruleColumns = []ui.TableColumn{
@@ -231,7 +275,7 @@ func filterConnections(in []core.Connection, q string) []core.Connection {
 	}
 	out := make([]core.Connection, 0, len(in))
 	for _, c := range in {
-		hay := strings.ToLower(c.Metadata.Host + " " + c.Metadata.ProcessPath + " " + c.Rule + " " + strings.Join(c.Chains, " "))
+		hay := strings.ToLower(c.Metadata.Host + " " + c.Metadata.Process + " " + c.Metadata.ProcessPath + " " + c.Metadata.SourceIP + " " + c.Metadata.DestinationIP + " " + c.Rule + " " + strings.Join(c.Chains, " "))
 		if strings.Contains(hay, q) {
 			out = append(out, c)
 		}

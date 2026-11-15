@@ -5,7 +5,10 @@ import (
 	"time"
 )
 
-const maxLogs = 2000
+const (
+	maxLogs        = 2000
+	maxConnections = 1500
+)
 
 // Snapshot is an immutable view of the running core for the UI.
 type RateSample struct {
@@ -120,6 +123,9 @@ func (s *State) SetTraffic(up, down int64, dt time.Duration) {
 }
 
 func (s *State) SetConnections(v Connections) {
+	if len(v.Connections) > maxConnections {
+		v.Connections = v.Connections[len(v.Connections)-maxConnections:]
+	}
 	s.mu.Lock()
 	s.v.Connections = v.Connections
 	s.v.ConnUpload = v.UploadTotal

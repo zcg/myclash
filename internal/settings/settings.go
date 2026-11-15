@@ -31,6 +31,7 @@ type Hotkeys struct {
 	SystemProxy string `yaml:"system_proxy"`
 	TUN         string `yaml:"tun"`
 	Mode        string `yaml:"mode"`
+	Quit        string `yaml:"quit"`
 }
 
 type App struct {
@@ -63,6 +64,8 @@ type UI struct {
 type Proxy struct {
 	SystemEnabled bool     `yaml:"system_enabled"`
 	Bypass        []string `yaml:"bypass"`
+	LastGroup     string   `yaml:"last_group"`
+	LastNode      string   `yaml:"last_node"`
 }
 
 type Advanced struct {
@@ -146,7 +149,7 @@ func Default() Settings {
 		Advanced: Advanced{
 			UnifiedDelay:    true,
 			TCPConcurrent:   true,
-			FindProcessMode: "strict",
+			FindProcessMode: "always",
 			Fingerprint:     "chrome",
 		},
 		Sniffer: Sniffer{
@@ -159,6 +162,7 @@ func Default() Settings {
 			SystemProxy: "CmdOrCtrl+Shift+P",
 			TUN:         "CmdOrCtrl+Shift+T",
 			Mode:        "CmdOrCtrl+Shift+R",
+			Quit:        "CmdOrCtrl+Shift+Q",
 		},
 		TUN: TUN{
 			Stack:      DefaultTUNStack,

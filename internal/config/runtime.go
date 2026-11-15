@@ -118,6 +118,11 @@ func inject(doc map[string]any, opts Options) {
 	doc["unified-delay"] = opts.Advanced.UnifiedDelay
 	doc["tcp-concurrent"] = opts.Advanced.TCPConcurrent
 	doc["find-process-mode"] = opts.Advanced.FindProcessMode
+	if opts.TUN.Enable {
+		// Process attribution under TUN is the whole point of the connections
+		// page; strict only annotates traffic mihomo can already match.
+		doc["find-process-mode"] = "always"
+	}
 	if opts.Advanced.Fingerprint != "" {
 		doc["global-client-fingerprint"] = opts.Advanced.Fingerprint
 	}
