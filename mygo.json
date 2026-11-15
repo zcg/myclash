@@ -1,0 +1,6 @@
+{
+  "name": "myclash",
+  "identifier": "com.example.myclash",
+  "version": "0.1.0",
+  "out": "build"
+}

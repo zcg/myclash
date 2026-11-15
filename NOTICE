@@ -1,0 +1,28 @@
+myclash
+Copyright (C) 2026 myclash contributors
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. See LICENSE.
+
+Third-party components
+----------------------
+
+MyGo
+  https://github.com/egoist/mygo
+  MIT License. Copyright (c) 2026 MyGo contributors.
+
+mihomo
+  https://github.com/MetaCubeX/mihomo
+  GNU General Public License v3.0.
+
+mygo-acrylic component layer
+  Adapted from the project's mygo-acrylic skill assets, derived from Gloss.
+  Attribution and license text to be finalized before the first public
+  release; see docs/10-ui-libraries.md and docs/12-doc-audit.md.
+
+Lucide icons (planned, subset embedded)
+  https://lucide.dev
+  ISC License; portions derived from Feather (MIT).
+  The final NOTICE lists the exact icon set and copyright line when embedded.
