@@ -177,3 +177,16 @@ func (s *State) SetError(err string) {
 	s.v.LastError = err
 	s.mu.Unlock()
 }
+
+// RecentLogs copies only the newest limit entries for the log page.
+func (s *State) RecentLogs(limit int) []LogEntry {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	n := len(s.v.Logs)
+	if limit <= 0 || limit > n {
+		limit = n
+	}
+	out := make([]LogEntry, limit)
+	copy(out, s.v.Logs[n-limit:])
+	return out
+}

@@ -190,8 +190,7 @@ func (a *App) pageRules(c *ui.Context, p acrylic.Palette) {
 }
 
 func (a *App) pageLogs(c *ui.Context, p acrylic.Palette) {
-	s := a.state.View()
-	logs := s.Logs
+	logs := a.state.RecentLogs(1000)
 	if a.logsPaused {
 		logs = a.frozenLogs
 	}
