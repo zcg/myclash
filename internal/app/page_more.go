@@ -64,6 +64,16 @@ func (a *App) pageConnections(c *ui.Context, p acrylic.Palette) {
 		ui.Text(c, "当前没有匹配的连接。").TextColor(p.InkMuted)
 		return
 	}
+	processes := false
+	for _, c := range rows {
+		if connProcess(c) != "—" {
+			processes = true
+			break
+		}
+	}
+	if !processes {
+		ui.Text(c, "进程列为空：到 设置 → 高级内核 把 find-process-mode 设为 Always（会增加连接查找开销）。").FontSize(11).TextColor(p.InkSubtle)
+	}
 	ui.Column(c).Height(520).Background(p.Code).Radius(8).Padding(10).Clip().Children(func() {
 		ui.Table(c, &a.connState, connColumns, len(rows), func(row, col int) {
 			conn := rows[row]

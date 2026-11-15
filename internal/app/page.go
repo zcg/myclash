@@ -547,6 +547,7 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 			changed = true
 		}
 		ui.Text(c, "find-process-mode").FontSize(11).TextColor(p.InkSubtle)
+		ui.Text(c, "Off 最省 CPU；Strict 只查询需要的连接；Always 每个连接都查询，连接很多时开销更高。").FontSize(11).TextColor(p.InkSubtle)
 		fp := acrylic.SegmentedText(c, p, &a.findProcessIdx, "Off", "Strict", "Always")
 		if fp.Changed() {
 			changed = true
