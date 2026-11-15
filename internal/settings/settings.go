@@ -340,10 +340,10 @@ func normalize(v Settings) Settings {
 	default:
 		v.TUN.Stack = DefaultTUNStack
 	}
-	if v.UI.Preset != "clear" && v.UI.Preset != "solid" {
+	if v.UI.Preset != "clear" && v.UI.Preset != "solid" && v.UI.Preset != "acrylic" {
 		v.UI.Preset = "glass"
 	}
-	if v.UI.Preset == "glass" {
+	if v.UI.Preset == "glass" || v.UI.Preset == "acrylic" {
 		v.UI.Blur = "deep"
 	} else {
 		v.UI.Blur = "none"

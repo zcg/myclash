@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/plugins/glass"
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
 
@@ -292,6 +293,14 @@ func (a *App) ready() {
 	a.logLevelIdx = logLevelIndex(s.Core.LogLevel)
 	a.themeIdx = themeIndex(s.UI.Theme)
 	a.presetIdx = presetIndex(s.UI.Preset)
+	if s.UI.Preset == "acrylic" && !platform.AcrylicSupported() {
+		a.presetIdx = 0
+		_ = a.settings.Update(func(st *settings.Settings) {
+			st.UI.Preset = "glass"
+			st.UI.Blur = "deep"
+		})
+		s = a.settings.Get()
+	}
 	a.densityIdx = densityIndex(s.UI.Density)
 	a.opacity = s.UI.CardOpacity
 	a.scale = s.UI.Scale
@@ -387,7 +396,14 @@ func (a *App) ready() {
 	}
 	acrylic.Window(&opts, a.dark, acrylic.NormalizeBlur(effectiveBlur(s.UI.Preset)))
 	if s.UI.Preset == "glass" {
-		opts.Vibrancy = mygo.VibrancyGlass
+		opts.Vibrancy = mygo.VibrancyNone
+	}
+	if s.UI.Preset == "acrylic" {
+		if platform.AcrylicSupported() {
+			opts.Vibrancy = mygo.VibrancyAcrylic
+		} else {
+			opts.Vibrancy = mygo.VibrancyNone
+		}
 	}
 	if s.UI.Preset != "solid" {
 		opts.BackgroundColor = "#00000000"
@@ -433,6 +449,11 @@ func (a *App) view(c *ui.Context) {
 	s := a.settings.Get()
 	if s.UI.Preset == "solid" {
 		acrylic.Ground(c, p)
+	} else if s.UI.Preset == "glass" {
+		// Liquid Glass is the in-app shader from MyGo's glass plugin, the
+		// same effect on all three platforms. It is deliberately not the
+		// Windows DWM Acrylic material.
+		c.Root().Material(glass.Glass{Style: glass.Regular})
 	} else {
 		c.Root().Background(ui.Transparent)
 	}
@@ -1341,6 +1362,8 @@ func presetIndex(v string) int {
 		return 1
 	case "solid":
 		return 2
+	case "acrylic":
+		return 3
 	}
 	return 0
 }
@@ -1367,7 +1390,7 @@ func densityIndex(v string) int {
 }
 
 var (
-	presets   = []string{"glass", "clear", "solid"}
+	presets   = []string{"glass", "clear", "solid", "acrylic"}
 	densities = []string{"comfortable", "compact"}
 	tunStacks = []string{"system", "gvisor", "mixed", "mips"}
 )
@@ -1387,9 +1410,16 @@ func (a *App) applyAppearance() {
 		return
 	}
 	if a.win != nil {
-		if preset == "glass" {
-			a.win.SetVibrancy(mygo.VibrancyGlass)
-		} else {
+		switch preset {
+		case "glass":
+			a.win.SetVibrancy(mygo.VibrancyNone)
+		case "acrylic":
+			if platform.AcrylicSupported() {
+				a.win.SetVibrancy(mygo.VibrancyAcrylic)
+			} else {
+				a.win.SetVibrancy(mygo.VibrancyNone)
+			}
+		default:
 			a.win.SetVibrancy(mygo.VibrancyNone)
 		}
 		if preset != "solid" {
@@ -1400,7 +1430,7 @@ func (a *App) applyAppearance() {
 }
 
 func effectiveBlur(preset string) string {
-	if preset == "glass" {
+	if preset == "glass" || preset == "acrylic" {
 		return "deep"
 	}
 	return "none"

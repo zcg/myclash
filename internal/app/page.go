@@ -451,11 +451,15 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 	case "appearance":
 		ui.Text(c, "外观").FontSize(15).Bold()
 		ui.Text(c, "材质").FontSize(11).TextColor(p.InkSubtle)
-		seg := acrylic.SegmentedText(c, p, &a.presetIdx, "液态玻璃", "透明", "实色")
+		labels := []string{"液态玻璃", "透明", "实色"}
+		if platform.AcrylicSupported() {
+			labels = append(labels, "Windows 亚克力")
+		}
+		seg := acrylic.SegmentedText(c, p, &a.presetIdx, labels...)
 		if seg.Changed() {
 			a.applyAppearance()
 		}
-		ui.Text(c, "液态玻璃模糊窗后内容；透明直接显示桌面；实色关闭透明，适合远程桌面。").
+		ui.Text(c, "液态玻璃是应用内玻璃材质；Windows 亚克力是 Windows 11 22H2+ 的 DWM 系统材质，只在受支持的 Windows 上出现。").
 			FontSize(11).TextColor(p.InkSubtle)
 		if acrylic.Checkbox(c, p, &a.monochromeIcons, "侧栏图标使用单色").Changed() {
 			if err := a.settings.Update(func(s *settings.Settings) { s.UI.MonochromeIcons = a.monochromeIcons }); err != nil {
