@@ -1,7 +1,14 @@
 {
   "name": "myclash",
   "identifier": "com.example.myclash",
-  "version": "0.7.10",
+  "version": "0.8.0",
   "out": "build",
-  "windows": { "installerInclude": "packaging/myclash.nsh" }
+  "windows": {
+    "installerInclude": "packaging/myclash.nsh"
+  },
+  "updates": {
+    "publicKey": "Jv/1kJJGImL6CW9X/3IbIeePXb4pGVVxbWtEP+nOBsU=",
+    "github": "zcg/myclash"
+  }
 }
+

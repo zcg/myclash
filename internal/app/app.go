@@ -93,6 +93,11 @@ type App struct {
 	hotkeyQuit       string
 	settingsSection  string
 	bypass           string
+	updateBusy       bool
+	updateStatus     string
+	updateVersion    string
+	updateNotes      string
+	updateProgress   float64
 	autoStart        bool
 	notifications    bool
 	elevatedAgent    bool

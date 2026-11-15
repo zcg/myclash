@@ -842,8 +842,35 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 
 	case "update":
 		ui.Text(c, "更新").FontSize(15).Bold()
-		ui.Text(c, "应用与内核随安装包更新；运行新安装包覆盖安装即可，配置会保留。").FontSize(11).TextColor(p.InkSubtle)
-
+		ui.Textf(c, "当前版本：%s", mygo.App.Version()).FontSize(12).TextColor(p.InkMuted)
+		if !mygo.Updater.Enabled() {
+			ui.Text(c, "开发版、便携版或未配置签名发布的构建不会自动更新；发布版从 GitHub Releases 检查签名更新。").FontSize(11).TextColor(p.InkSubtle)
+		}
+		a.mu.Lock()
+		status := a.updateStatus
+		version := a.updateVersion
+		notes := a.updateNotes
+		busy := a.updateBusy
+		progress := a.updateProgress
+		a.mu.Unlock()
+		if status != "" {
+			ui.Text(c, status).FontSize(11).TextColor(p.InkMuted)
+		}
+		if progress > 0 && busy {
+			ui.Progress(c, progress).Height(6).Width(360)
+		}
+		ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+			if acrylic.Button(c, p, "检查更新", busy || !mygo.Updater.Enabled()).Clicked() {
+				a.checkUpdates()
+			}
+			if version != "" && acrylic.PrimaryButton(c, p, "安装并重启", busy).Clicked() {
+				a.installUpdate()
+			}
+		})
+		if notes != "" {
+			ui.Text(c, "更新说明").FontSize(11).TextColor(p.InkSubtle)
+			ui.Text(c, notes).FontSize(11).TextColor(p.InkMuted)
+		}
 	}
 }
 func (a *App) isBusy() bool {
