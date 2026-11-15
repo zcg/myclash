@@ -159,6 +159,17 @@ func (a *App) pageOverview(c *ui.Context, p acrylic.Palette) {
 		})
 	})
 
+	if hist := a.trafficSeries(120, true); len(hist) > 1 {
+		history := a.panel(c, p, opacity).Padding(a.cardPad())
+		history.Children(func() {
+			ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+				ui.Text(c, "流量历史").Bold()
+				ui.Text(c, "最近 1 小时采样，每 30 秒一点").FontSize(11).TextColor(p.InkSubtle)
+			})
+			widgets.Sparkline(c, p.Accent.Alpha(0.8), hist, 48)
+		})
+	}
+
 	connectivity := a.panel(c, p, opacity).Padding(a.cardPad())
 	connectivity.Children(func() {
 		results, testing := a.siteSnapshot()

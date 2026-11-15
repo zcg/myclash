@@ -118,6 +118,9 @@ type App struct {
 	paletteQuery     string
 	paletteIndex     int
 	floating         *mygo.Window
+	trafficPath      string
+	trafficHistory   []trafficPoint
+	lastTrafficSave  time.Time
 	proxySearch      string
 	proxySortIdx     int
 	proxyExpanded    map[string]bool
@@ -696,6 +699,7 @@ func (a *App) startStreams(client *core.Client) {
 			dt := now.Sub(last)
 			last = now
 			a.state.SetTraffic(up, down, dt)
+			a.recordTraffic(up, down)
 			a.paintTraffic()
 		})
 		if err != nil && ctx.Err() == nil {
