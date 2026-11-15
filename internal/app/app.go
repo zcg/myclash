@@ -99,6 +99,7 @@ type App struct {
 	connSearch       string
 	ruleSearch       string
 	logSearch        string
+	logLevelFilter   int
 	proxySearch      string
 	proxySortIdx     int
 	proxyExpanded    map[string]bool
@@ -303,6 +304,7 @@ func (a *App) ready() {
 		StateKey:       "main",
 		TitleBarStyle:  mygo.TitleBarHiddenInset,
 		TitleBarHeight: 42,
+		Hidden:         mygo.App.WasOpenedAtLogin(),
 		Content:        ui.View(a.view),
 	}
 	acrylic.Window(&opts, a.dark, acrylic.NormalizeBlur(effectiveBlur(s.UI.Preset)))

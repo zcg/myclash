@@ -219,8 +219,23 @@ func (a *App) pageLogs(c *ui.Context, p acrylic.Palette) {
 		}
 	})
 	a.errorBar(c, p)
+	ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
+		ui.Text(c, "级别").FontSize(11).TextColor(p.InkSubtle)
+		acrylic.SegmentedText(c, p, &a.logLevelFilter, "全部", "Debug", "Info", "Warning", "Error")
+	})
 
 	rows := filterLogs(logs, a.logSearch)
+	if a.logLevelFilter > 0 {
+		levels := []string{"", "debug", "info", "warning", "error"}
+		level := levels[clampIdx(a.logLevelFilter, len(levels))]
+		kept := rows[:0]
+		for _, e := range rows {
+			if strings.EqualFold(e.Type, level) {
+				kept = append(kept, e)
+			}
+		}
+		rows = kept
+	}
 	if len(rows) > 600 {
 		rows = rows[len(rows)-600:]
 	}

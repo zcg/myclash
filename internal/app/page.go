@@ -498,7 +498,7 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 		if acrylic.Checkbox(c, p, &a.closeTray, "关闭窗口时保留在托盘").Changed() {
 			changed = true
 		}
-		if acrylic.Checkbox(c, p, &a.openAtLogin, "登录时启动 myclash").Changed() {
+		if acrylic.Checkbox(c, p, &a.openAtLogin, "登录时启动 myclash（静默驻留托盘）").Changed() {
 			if err := mygo.App.SetOpenAtLogin(a.openAtLogin); err != nil {
 				a.setError(err)
 			} else {
