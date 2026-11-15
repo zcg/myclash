@@ -86,6 +86,8 @@ type App struct {
 	densityIdx       int
 	opacity          float64
 	glassClarity     float64
+	acrylicOpacity   float64
+	acrylicTint      float64
 	scale            float64
 	monochromeIcons  bool
 	hotkeyShow       string
@@ -305,6 +307,7 @@ func (a *App) ready() {
 	a.densityIdx = densityIndex(s.UI.Density)
 	a.opacity = s.UI.CardOpacity
 	a.glassClarity = s.UI.GlassClarity
+	a.acrylicOpacity = s.UI.AcrylicOpacity
 	a.scale = s.UI.Scale
 	a.monochromeIcons = s.UI.MonochromeIcons
 	a.hotkeyShow = s.Hotkeys.Show
@@ -401,16 +404,15 @@ func (a *App) ready() {
 		opts.Vibrancy = mygo.VibrancyNone
 	}
 	if s.UI.Preset == "acrylic" {
-		if platform.AcrylicSupported() {
-			opts.Vibrancy = mygo.VibrancyAcrylic
-		} else {
-			opts.Vibrancy = mygo.VibrancyNone
-		}
+		opts.Vibrancy = mygo.VibrancyNone
 	}
 	if s.UI.Preset != "solid" {
 		opts.BackgroundColor = "#00000000"
 	}
 	a.win = mygo.NewWindow(opts)
+	if s.UI.Preset == "acrylic" && platform.AcrylicSupported() {
+		_ = platform.SetAcrylic(a.win.NativeHandle(), a.acrylicOpacity)
+	}
 	a.win.OnClose(func(e *mygo.CloseEvent) {
 		if a.attach {
 			os.Exit(0)
@@ -1413,18 +1415,22 @@ func (a *App) applyAppearance() {
 		s.UI.Density = density
 		s.UI.CardOpacity = a.opacity
 		s.UI.GlassClarity = a.glassClarity
+		s.UI.AcrylicOpacity = a.acrylicOpacity
 		s.UI.Scale = a.scale
 	}); err != nil {
 		a.setError(err)
 		return
 	}
 	if a.win != nil {
+		hwnd := a.win.NativeHandle()
+		_ = platform.ClearAcrylic(hwnd)
 		switch preset {
 		case "glass":
 			a.win.SetVibrancy(mygo.VibrancyNone)
 		case "acrylic":
 			if platform.AcrylicSupported() {
-				a.win.SetVibrancy(mygo.VibrancyAcrylic)
+				a.win.SetVibrancy(mygo.VibrancyNone)
+				_ = platform.SetAcrylic(hwnd, a.acrylicOpacity)
 			} else {
 				a.win.SetVibrancy(mygo.VibrancyNone)
 			}

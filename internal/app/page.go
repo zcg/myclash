@@ -490,6 +490,17 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 				ui.Text(c, "清晰度越高越透，越低越霜；这是窗口内玻璃插件的参数，不是系统模糊强度。").
 					FontSize(11).TextColor(p.InkSubtle)
 			}
+			if preset == "acrylic" {
+				ui.Row(c).Gap(12).AlignItems(ui.Center).Children(func() {
+					ui.Text(c, "亚克力浓度").FontSize(11).TextColor(p.InkSubtle).Width(120)
+					if ui.Slider(c, &a.acrylicOpacity, 0, 1).Width(260).Changed() {
+						a.applyAppearance()
+					}
+					ui.Textf(c, "%.0f%%", a.acrylicOpacity*100).FontSize(11).TextColor(p.InkMuted).Width(48)
+				})
+				ui.Text(c, "这是 Windows 旧版 Acrylic 的 GradientColor alpha；DWM 系统模糊本身不可单独调。").
+					FontSize(11).TextColor(p.InkSubtle)
+			}
 		}
 		ui.Text(c, "主题").FontSize(11).TextColor(p.InkSubtle)
 		theme := acrylic.SegmentedText(c, p, &a.themeIdx, "跟随系统", "浅色", "深色")
