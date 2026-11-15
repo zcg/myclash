@@ -500,10 +500,12 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 
 	case "kernel":
 		ui.Text(c, "内核").FontSize(15).Bold()
+		ui.Text(c, "端口、转发模式与日志级别；端口改动会重启内核。").FontSize(11).TextColor(p.InkSubtle)
 		ui.Row(c).Gap(12).Children(func() {
 			ui.TextInput(c, &a.mixed).Label("混合端口").Width(150)
 			ui.TextInput(c, &a.controller).Label("Controller 端口").Width(150)
 		})
+		ui.Text(c, "混合端口供 HTTP/SOCKS 客户端使用；Controller 只监听本机 REST，供界面读取状态。").FontSize(11).TextColor(p.InkSubtle)
 		ui.Text(c, "转发模式").FontSize(11).TextColor(p.InkSubtle)
 		seg := acrylic.SegmentedText(c, p, &a.modeIdx, "规则", "全局", "直连")
 		if seg.Changed() {
@@ -513,6 +515,15 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 		if lg := acrylic.SegmentedText(c, p, &a.logLevelIdx, "Info", "Debug", "Warning", "Error"); lg.Changed() {
 			a.applyLogLevel(a.logLevelIdx)
 		}
+		ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
+			if acrylic.PrimaryButton(c, p, "保存", false).Clicked() {
+				a.saveSettings()
+			}
+			if acrylic.Button(c, p, "重启内核", !a.state.View().Started || a.isBusy()).Clicked() {
+				a.restartCore()
+			}
+		})
+		ui.Textf(c, "当前内核：%s · %s", kernelVersion(a.state.View().Version), startedText(a.state.View().Started)).FontSize(11).TextColor(p.InkSubtle)
 		ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
 			if acrylic.PrimaryButton(c, p, "保存", false).Clicked() {
 				a.saveSettings()
@@ -699,26 +710,39 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 
 	case "advanced":
 		ui.Text(c, "高级内核").FontSize(15).Bold()
+		ui.Text(c, "只在明确知道影响时修改；保存会重启内核。").FontSize(11).TextColor(p.InkSubtle)
 		changed := false
-		if acrylic.Checkbox(c, p, &a.unifiedDelay, "unified-delay").Changed() {
+		if acrylic.Checkbox(c, p, &a.unifiedDelay, "unified-delay（统一延迟）").Changed() {
 			changed = true
 		}
-		if acrylic.Checkbox(c, p, &a.tcpConcurrent, "tcp-concurrent").Changed() {
+		ui.Text(c, "把延迟测试统一成同一种握手方式，数据更可比。").FontSize(11).TextColor(p.InkSubtle)
+		if acrylic.Checkbox(c, p, &a.tcpConcurrent, "tcp-concurrent（并发连接）").Changed() {
 			changed = true
 		}
-		ui.Text(c, "find-process-mode").FontSize(11).TextColor(p.InkSubtle)
+		ui.Text(c, "对同一域名同时尝试多个 IP，通常更快，但会增加连接数。").FontSize(11).TextColor(p.InkSubtle)
+		ui.Text(c, "find-process-mode（进程归属）").FontSize(11).TextColor(p.InkSubtle)
 		ui.Text(c, "Off 最省 CPU；Strict 只查询需要的连接；Always 每个连接都查询，连接很多时开销更高。").FontSize(11).TextColor(p.InkSubtle)
 		fp := acrylic.SegmentedText(c, p, &a.findProcessIdx, "Off", "Strict", "Always")
 		if fp.Changed() {
 			changed = true
 		}
 		ui.Row(c).Gap(12).Children(func() {
-			ui.TextInput(c, &a.fingerprint).Label("客户端指纹").Width(180)
-			ui.TextInput(c, &a.iface).Label("出站网卡").Width(180)
-			ui.TextInput(c, &a.routingMark).Label("routing-mark").Width(140)
+			ui.TextInput(c, &a.fingerprint).Label("TLS 客户端指纹").Width(180)
+			ui.TextInput(c, &a.iface).Label("出站网卡（可选）").Width(180)
+			ui.TextInput(c, &a.routingMark).Label("routing-mark（Linux）").Width(160)
 		})
+		ui.Text(c, "指纹常用 chrome；出站网卡留空表示自动选择；routing-mark 0 表示关闭。").FontSize(11).TextColor(p.InkSubtle)
 		ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
 			if acrylic.PrimaryButton(c, p, "保存", false).Clicked() {
+				changed = true
+			}
+			if acrylic.Button(c, p, "恢复默认", false).Clicked() {
+				a.unifiedDelay = true
+				a.tcpConcurrent = true
+				a.findProcessIdx = findProcessIndex("always")
+				a.fingerprint = "chrome"
+				a.iface = ""
+				a.routingMark = "0"
 				changed = true
 			}
 			if changed {
