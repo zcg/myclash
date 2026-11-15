@@ -465,6 +465,9 @@ func (a *App) view(c *ui.Context) {
 			if platform.IsElevated() {
 				acrylic.Chip(c, p, "管理员", p.Success)
 			}
+			if a.attach {
+				acrylic.Chip(c, p, "Agent", p.Accent)
+			}
 		})
 
 		ui.Row(c).Fill().AlignItems(ui.Stretch).Children(func() {
