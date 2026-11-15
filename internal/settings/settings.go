@@ -26,6 +26,13 @@ type Settings struct {
 	Logs     Logs     `yaml:"logs"`
 	TUN      TUN      `yaml:"tun"`
 	Test     Test     `yaml:"test"`
+	WebDAV   WebDAV   `yaml:"webdav"`
+}
+
+type WebDAV struct {
+	URL      string `yaml:"url"`
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
 }
 
 type Logs struct {
@@ -52,6 +59,7 @@ type App struct {
 	CloseToTray      bool   `yaml:"close_to_tray"`
 	OpenAtLogin      bool   `yaml:"open_at_login"`
 	Language         string `yaml:"language"` // auto | zh-CN | en
+	Notifications    bool   `yaml:"notifications"`
 }
 
 type Core struct {
@@ -136,6 +144,7 @@ func Default() Settings {
 			AutoStartProfile: true,
 			CloseToTray:      true,
 			Language:         "auto",
+			Notifications:    true,
 		},
 		Core: Core{
 			MixedPort:      7890,

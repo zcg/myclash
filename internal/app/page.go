@@ -578,11 +578,15 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 				changed = true
 			}
 		}
+		if acrylic.Checkbox(c, p, &a.notifications, "窗口不在前台时发送系统通知").Changed() {
+			changed = true
+		}
 		if changed {
 			_ = a.settings.Update(func(s *settings.Settings) {
 				s.App.AutoStartProfile = a.autoStart
 				s.App.CloseToTray = a.closeTray
 				s.App.OpenAtLogin = a.openAtLogin
+				s.App.Notifications = a.notifications
 			})
 		}
 		ui.Text(c, "轻量模式（M3）：关闭窗口后由后台 Agent 保留内核与托盘。").FontSize(11).TextColor(p.InkSubtle)
@@ -619,6 +623,25 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 			if acrylic.Button(c, p, "立即清空日志", false).Clicked() {
 				a.clearLogs()
 				a.setStatus("日志已清空")
+			}
+		})
+		ui.Text(c, "WebDAV 同步").FontSize(13).Bold()
+		ui.Text(c, "备份 zip 会 PUT 到该地址；下载后覆盖并重启。密码保存在 settings.yaml，请使用专用应用密码。").
+			FontSize(11).TextColor(p.InkSubtle)
+		ui.TextInput(c, &a.webdavURL).Label("WebDAV 地址或文件 URL").Width(520)
+		ui.Row(c).Gap(10).Children(func() {
+			ui.TextInput(c, &a.webdavUser).Label("用户名").Width(220)
+			ui.TextInput(c, &a.webdavPass).Label("密码 / 应用密码").Width(220)
+		})
+		ui.Row(c).Gap(8).Wrap().Children(func() {
+			if acrylic.Button(c, p, "保存 WebDAV", false).Clicked() {
+				a.saveWebDAV()
+			}
+			if acrylic.Button(c, p, "上传备份", false).Clicked() {
+				a.uploadWebDAV()
+			}
+			if acrylic.Button(c, p, "从 WebDAV 恢复", false).Clicked() {
+				a.downloadWebDAV()
 			}
 		})
 		ui.Textf(c, "配置目录：%s", a.dataDir).FontSize(11).TextColor(p.InkMuted)

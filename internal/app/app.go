@@ -96,6 +96,7 @@ type App struct {
 	bypass           string
 	autoStart        bool
 	openAtLogin      bool
+	notifications    bool
 	closeTray        bool
 	forceQuit        bool
 	logFile          *os.File
@@ -114,6 +115,9 @@ type App struct {
 	logRetentionIdx   int
 	logMaxMB          int
 	logMaxText        string
+	webdavURL         string
+	webdavUser        string
+	webdavPass        string
 	testDelayURL      string
 	testSpeedURL      string
 	siteResults       []siteResult
@@ -304,6 +308,9 @@ func (a *App) ready() {
 	a.settingsSection = "general"
 	a.logRetentionIdx = logRetentionIndex(s.Logs.Retention)
 	a.logMaxMB = s.Logs.MaxSizeMB
+	a.webdavURL = s.WebDAV.URL
+	a.webdavUser = s.WebDAV.Username
+	a.webdavPass = s.WebDAV.Password
 	a.logMaxText = strconv.Itoa(a.logMaxMB)
 	a.testDelayURL = s.Test.DelayURL
 	a.testSpeedURL = s.Test.SpeedURL
@@ -336,6 +343,7 @@ func (a *App) ready() {
 	a.autoStart = s.App.AutoStartProfile
 	a.closeTray = s.App.CloseToTray
 	a.openAtLogin = mygo.App.OpenAtLogin()
+	a.notifications = s.App.Notifications
 	acrylic.SetAppearance(s.UI.Theme)
 	a.dark = mygo.Theme.IsDark()
 	mygo.Theme.OnUpdated(func() {
@@ -1152,6 +1160,7 @@ func (a *App) setError(err error) {
 	a.busy = false
 	a.mu.Unlock()
 	a.writeLogFile(core.LogEntry{Type: "error", Payload: err.Error()})
+	a.notify("myclash 需要处理", err.Error())
 	a.invalidate()
 }
 
