@@ -854,17 +854,13 @@ func (a *App) stopCore() {
 }
 
 func (a *App) restartCore() {
+	// Use the same path as stop, so status, streams, connections and the
+	// state snapshot are all cleared before the new core starts.
+	a.stopCore()
 	a.mu.Lock()
-	host := a.host
-	cancel := a.cancel
-	a.host = nil
-	a.client = nil
+	a.busy = false
+	a.errMsg = ""
 	a.mu.Unlock()
-	cancel()
-	if host != nil {
-		_ = host.Stop(context.Background())
-	}
-	a.state.SetStarted(false)
 	a.startCore()
 }
 
