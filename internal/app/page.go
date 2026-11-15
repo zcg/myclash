@@ -626,6 +626,8 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 		}
 		ui.Text(c, "轻量模式关闭窗口后由 Agent 保留内核与托盘；再次打开窗口只附着 Agent，不再启动第二套内核。").
 			FontSize(11).TextColor(p.InkSubtle)
+		ui.Text(c, "启动时自动启用：打开应用后直接启动上次选中的 Profile；关闭时保留在托盘：点关闭不退出进程。").
+			FontSize(11).TextColor(p.InkSubtle)
 		if runtime.GOOS == "windows" {
 			if acrylic.Checkbox(c, p, &a.elevatedAgent, "登录时以管理员启动 Agent（TUN 需要）").Changed() {
 				if err := platform.SetAgentAtLogin(a.elevatedAgent); err != nil {

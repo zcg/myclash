@@ -28,17 +28,25 @@ func (a *App) pageDNS(c *ui.Context, p acrylic.Palette) {
 			acrylic.Checkbox(c, p, &a.dnsEnable, "启用")
 		})
 
-		ui.Row(c).Gap(12).Children(func() {
-			ui.TextInput(c, &a.dnsListen).Label("监听地址").Placeholder("127.0.0.1:1053").Width(220)
-			ui.TextInput(c, &a.dnsFakeIPRange).Label("Fake-IP 范围").Placeholder("198.18.0.1/16").Width(220)
+		ui.Row(c).Gap(12).AlignItems(ui.Start).Children(func() {
+			acrylic.TextField(c, p, &a.dnsListen, acrylic.TextFieldOptions{
+				Label: "监听地址", Description: "留空沿用配置；例如 127.0.0.1:1053", Width: 240,
+			})
+			acrylic.TextField(c, p, &a.dnsFakeIPRange, acrylic.TextFieldOptions{
+				Label: "Fake-IP 范围", Description: "Fake-IP 模式的地址池", Width: 240,
+			})
 		})
 		ui.Text(c, "增强模式").FontSize(11).TextColor(p.InkSubtle)
 		acrylic.SegmentedText(c, p, &a.dnsModeIdx, "Normal", "Fake-IP")
 
 		ui.Text(c, "Nameserver").FontSize(11).TextColor(p.InkSubtle)
-		ui.TextInput(c, &a.dnsNameservers).Placeholder("https://223.5.5.5/dns-query, https://1.1.1.1/dns-query").FillWidth()
+		acrylic.TextField(c, p, &a.dnsNameservers, acrylic.TextFieldOptions{
+			Label: "Nameserver", Description: "主要 DNS；多个地址用逗号或换行分隔", Width: 560,
+		})
 		ui.Text(c, "Fallback").FontSize(11).TextColor(p.InkSubtle)
-		ui.TextInput(c, &a.dnsFallback).Placeholder("tls://8.8.8.8:853").FillWidth()
+		acrylic.TextField(c, p, &a.dnsFallback, acrylic.TextFieldOptions{
+			Label: "Fallback DNS", Description: "主 DNS 超时或失败时使用", Width: 560,
+		})
 		ui.Text(c, "多个地址用逗号或换行分隔；保存会重启内核。").FontSize(11).TextColor(p.InkSubtle)
 
 		ui.Row(c).Gap(10).Children(func() {
