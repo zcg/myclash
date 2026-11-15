@@ -3,7 +3,6 @@ package app
 import (
 	"fmt"
 	"net"
-	"runtime"
 
 	"github.com/egoist/mygo/ui"
 
@@ -47,7 +46,7 @@ func (a *App) pageTUN(c *ui.Context, p acrylic.Palette) {
 		ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
 			if acrylic.PrimaryButton(c, p, "保存并重启内核", false).Clicked() {
 				a.saveTUN()
-				if a.tunEnable && runtime.GOOS == "windows" && !platform.IsElevated() {
+				if a.tunEnable && !platform.IsElevated() {
 					if err := platform.RelaunchElevated(); err != nil {
 						a.setError(err)
 					}
@@ -57,7 +56,7 @@ func (a *App) pageTUN(c *ui.Context, p acrylic.Palette) {
 					a.restartCore()
 				}
 			}
-			if runtime.GOOS == "windows" && !platform.IsElevated() {
+			if !platform.IsElevated() {
 				if acrylic.Button(c, p, "以管理员身份重启", false).Clicked() {
 					a.tunEnable = true
 					a.saveTUN()
@@ -82,7 +81,7 @@ func (a *App) pageTUN(c *ui.Context, p acrylic.Palette) {
 		a.tunDiagRow(c, p, "内核", startedText(a.state.Get().Started))
 		a.tunDiagRow(c, p, "网卡", interfaceText(a.tunDevice))
 		a.tunDiagRow(c, p, "系统代理", proxyText(a.systemProxy))
-		if a.tunEnable && runtime.GOOS == "windows" && !platform.IsElevated() {
+		if a.tunEnable && !platform.IsElevated() {
 			ui.Text(c, "当前进程没有管理员权限，TUN 启动会被内核拒绝。请点击上方「以管理员身份重启」。").FontSize(11).TextColor(p.Danger)
 		}
 	})
@@ -117,7 +116,7 @@ func (a *App) saveTUN() {
 		a.setError(err)
 		return
 	}
-	if a.tunEnable && runtime.GOOS == "windows" && !platform.IsElevated() {
+	if a.tunEnable && !platform.IsElevated() {
 		a.setError(fmt.Errorf("TUN 需要管理员权限：点击「以管理员身份重启」"))
 	}
 	a.invalidate()

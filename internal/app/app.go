@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"runtime"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -256,7 +255,7 @@ func (a *App) ready() {
 		_ = a.settings.Update(func(s *settings.Settings) { s.TUN.Enable = false })
 		s = a.settings.Get()
 	}
-	if s.TUN.Enable && runtime.GOOS == "windows" && !platform.IsElevated() {
+	if s.TUN.Enable && !platform.IsElevated() {
 		if err := platform.RelaunchElevated(); err == nil {
 			return
 		}
@@ -1332,7 +1331,7 @@ func (a *App) card(c *ui.Context, p acrylic.Palette, opacity float64) ui.Element
 }
 
 func (a *App) tunActive() bool {
-	return a.tunEnable && (runtime.GOOS != "windows" || platform.IsElevated())
+	return a.tunEnable && platform.IsElevated()
 }
 
 func (a *App) toggleTUN() {
@@ -1343,7 +1342,7 @@ func (a *App) toggleTUN() {
 		}
 		return
 	}
-	if runtime.GOOS == "windows" && !platform.IsElevated() {
+	if !platform.IsElevated() {
 		if err := platform.RelaunchElevated(); err != nil {
 			a.setError(err)
 			return
