@@ -706,6 +706,10 @@ func (a *App) selectProxy(group, name string) {
 			a.setError(err)
 			return
 		}
+		a.mu.Lock()
+		a.proxyGroup = group
+		a.proxyNode = name
+		a.mu.Unlock()
 		a.refreshProxies()
 	}()
 }

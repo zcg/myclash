@@ -74,9 +74,7 @@ func (a *App) trayMenu() *mygo.Menu {
 		}},
 		{Type: mygo.MenuItemSeparator},
 		{Label: "退出 myclash", Click: func(*mygo.MenuItem, *mygo.Window) {
-			a.forceQuit = true
-			platform.ArmKillWatchdog()
-			mygo.App.Quit()
+			a.quitApp()
 		}},
 	})
 }

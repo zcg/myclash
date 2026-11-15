@@ -527,7 +527,7 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 
 	case "about":
 		ui.Text(c, "关于").FontSize(15).Bold()
-		ui.Textf(c, "myclash 0.1.1 · mihomo %s", kernelVersion(a.state.Get().Version)).FontSize(12).TextColor(p.InkMuted)
+		ui.Textf(c, "myclash 0.1.2 · mihomo %s", kernelVersion(a.state.Get().Version)).FontSize(12).TextColor(p.InkMuted)
 		ui.Text(c, "GPL-3.0 · 源码与问题反馈见仓库").FontSize(11).TextColor(p.InkSubtle)
 
 	case "advanced":
