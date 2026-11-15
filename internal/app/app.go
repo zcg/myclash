@@ -85,6 +85,7 @@ type App struct {
 	presetIdx        int
 	densityIdx       int
 	opacity          float64
+	glassClarity     float64
 	scale            float64
 	monochromeIcons  bool
 	hotkeyShow       string
@@ -303,6 +304,7 @@ func (a *App) ready() {
 	}
 	a.densityIdx = densityIndex(s.UI.Density)
 	a.opacity = s.UI.CardOpacity
+	a.glassClarity = s.UI.GlassClarity
 	a.scale = s.UI.Scale
 	a.monochromeIcons = s.UI.MonochromeIcons
 	a.hotkeyShow = s.Hotkeys.Show
@@ -453,7 +455,7 @@ func (a *App) view(c *ui.Context) {
 		// Liquid Glass is the in-app shader from MyGo's glass plugin, the
 		// same effect on all three platforms. It is deliberately not the
 		// Windows DWM Acrylic material.
-		c.Root().Material(glass.Glass{Style: glass.Regular})
+		c.Root().Material(glass.Glass{Style: glass.Regular, Clarity: float32(a.glassClarity)})
 	} else {
 		c.Root().Background(ui.Transparent)
 	}
@@ -1404,6 +1406,7 @@ func (a *App) applyAppearance() {
 		s.UI.Blur = blur
 		s.UI.Density = density
 		s.UI.CardOpacity = a.opacity
+		s.UI.GlassClarity = a.glassClarity
 		s.UI.Scale = a.scale
 	}); err != nil {
 		a.setError(err)

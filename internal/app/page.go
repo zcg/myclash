@@ -467,7 +467,7 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 			}
 			a.invalidate()
 		}
-		if presets[clampIdx(a.presetIdx, len(presets))] != "solid" {
+		if preset := presets[clampIdx(a.presetIdx, len(presets))]; preset != "solid" {
 			changed := false
 			ui.Row(c).Gap(12).AlignItems(ui.Center).Children(func() {
 				ui.Text(c, "面板不透明度").FontSize(11).TextColor(p.InkSubtle).Width(120)
@@ -478,6 +478,17 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 			})
 			if changed {
 				a.applyAppearance()
+			}
+			if preset == "glass" {
+				ui.Row(c).Gap(12).AlignItems(ui.Center).Children(func() {
+					ui.Text(c, "玻璃清晰度").FontSize(11).TextColor(p.InkSubtle).Width(120)
+					if ui.Slider(c, &a.glassClarity, 0, 1).Width(260).Changed() {
+						a.applyAppearance()
+					}
+					ui.Textf(c, "%.0f%%", a.glassClarity*100).FontSize(11).TextColor(p.InkMuted).Width(48)
+				})
+				ui.Text(c, "清晰度越高越透，越低越霜；这是窗口内玻璃插件的参数，不是系统模糊强度。").
+					FontSize(11).TextColor(p.InkSubtle)
 			}
 		}
 		ui.Text(c, "主题").FontSize(11).TextColor(p.InkSubtle)
