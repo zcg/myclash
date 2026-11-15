@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -159,6 +160,47 @@ func (a *agentApp) ready() {
 	a.setupTray()
 }
 
+func (a *agentApp) runtimeOptions(s settings.Settings) config.Options {
+	return config.Options{
+		MixedPort: s.Core.MixedPort, ControllerPort: s.Core.ControllerPort,
+		Mode: s.Core.Mode, LogLevel: s.Core.LogLevel, AllowLAN: s.Core.AllowLAN, IPv6: s.Core.IPv6,
+		DNS: config.DNSOptions{
+			Enable: s.DNS.Enable, Listen: s.DNS.Listen, EnhancedMode: s.DNS.EnhancedMode,
+			IPv6: s.DNS.IPv6, Nameserver: s.DNS.Nameserver, Fallback: s.DNS.Fallback, FakeIPRange: s.DNS.FakeIPRange,
+		},
+		Advanced: config.AdvancedOptions{
+			UnifiedDelay: s.Advanced.UnifiedDelay, TCPConcurrent: s.Advanced.TCPConcurrent,
+			FindProcessMode: s.Advanced.FindProcessMode, Fingerprint: s.Advanced.Fingerprint,
+			InterfaceName: s.Advanced.InterfaceName, RoutingMark: s.Advanced.RoutingMark,
+		},
+		Sniffer: config.SnifferOptions{
+			Enable: s.Sniffer.Enable, ForceDNSMapping: s.Sniffer.ForceDNSMapping,
+			OverrideDestination: s.Sniffer.OverrideDestination, ParsePureIP: s.Sniffer.ParsePureIP,
+			HTTPPorts: splitList(s.Sniffer.HTTPPorts), TLSPorts: splitList(s.Sniffer.TLSPorts),
+			QUICPorts: splitList(s.Sniffer.QUICPorts), SkipDomain: splitList(s.Sniffer.SkipDomain),
+			ForceDomain: splitList(s.Sniffer.ForceDomain), SkipSrc: splitList(s.Sniffer.SkipSrc),
+			SkipDst: splitList(s.Sniffer.SkipDst),
+		},
+		TUN: config.TUNOptions{
+			Enable: s.TUN.Enable, Stack: s.TUN.Stack, Device: s.TUN.Device,
+			AutoRoute: s.TUN.AutoRoute, StrictRoute: s.TUN.StrictRoute,
+			DNSHijack: s.TUN.DNSHijack, AutoDetect: s.TUN.AutoDetect,
+		},
+	}
+}
+
+func (a *agentApp) reloadCore() error {
+	s := a.settings.Get()
+	raw, err := a.profiles.Runtime(a.runtimeOptions(s))
+	if err != nil {
+		return err
+	}
+	if a.host == nil {
+		return errors.New("agent: core not running")
+	}
+	return a.host.Reload(context.Background(), raw)
+}
+
 func (a *agentApp) setupTray() {
 	tray, err := mygo.NewTray(mygo.TrayOptions{
 		ID: "agent", Icon: trayIcon, ToolTip: "myclash Agent",
@@ -225,7 +267,22 @@ func (a *agentApp) startControl() (string, string, error) {
 		if !auth(w, r) {
 			return
 		}
-		http.Error(w, "TUN 不能通过 Agent 热切换，请在标准模式修改后重启 Agent", http.StatusNotImplemented)
+		enable := r.URL.Query().Get("enabled") == "1"
+		if enable && !platform.IsElevated() {
+			http.Error(w, "Agent 不是管理员权限，无法启用 TUN", http.StatusForbidden)
+			return
+		}
+		old := a.settings.Get().TUN.Enable
+		if err := a.settings.Update(func(s *settings.Settings) { s.TUN.Enable = enable }); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if err := a.reloadCore(); err != nil {
+			_ = a.settings.Update(func(s *settings.Settings) { s.TUN.Enable = old })
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
 	})
 	mux.HandleFunc("/quit", func(w http.ResponseWriter, r *http.Request) {
 		if !auth(w, r) {
@@ -290,6 +347,8 @@ func (a *App) attachAgent() error {
 	a.client = client
 	a.attach = true
 	a.agentPID = info.PID
+	a.agentControl = info.ControlAddr
+	a.agentToken = info.ControlToken
 	a.mu.Unlock()
 	a.state.SetStarted(true)
 	a.state.SetVersion(version, a.settings.Get().Core.Mode)
@@ -322,4 +381,26 @@ func (a *App) switchToAgent() {
 		time.Sleep(200 * time.Millisecond)
 		os.Exit(0)
 	}()
+}
+
+func (a *App) agentRequest(path string) error {
+	if a.agentControl == "" || a.agentToken == "" {
+		return errors.New("Agent 控制端点不可用")
+	}
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, "http://"+a.agentControl+path, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+a.agentToken)
+	client := &http.Client{Timeout: 8 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return fmt.Errorf("Agent: %s: %s", resp.Status, string(b))
+	}
+	return nil
 }

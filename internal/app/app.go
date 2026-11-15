@@ -98,6 +98,8 @@ type App struct {
 	notifications    bool
 	attach           bool
 	agentPID         int
+	agentControl     string
+	agentToken       string
 	runModeIdx       int
 	closeTray        bool
 	forceQuit        bool
@@ -1369,7 +1371,20 @@ func (a *App) tunActive() bool {
 
 func (a *App) toggleTUN() {
 	if a.attach {
-		a.setError(errors.New("当前由轻量 Agent 托管，请在 Agent 托盘里管理"))
+		enable := a.tunEnable
+		path := "/tun?enabled=0"
+		if enable {
+			path = "/tun?enabled=1"
+		}
+		if err := a.agentRequest(path); err != nil {
+			a.setError(err)
+			a.tunEnable = !enable
+			a.invalidate()
+			return
+		}
+		a.saveTUN()
+		a.setStatus("Agent TUN 已更新")
+		a.invalidate()
 		return
 	}
 	a.saveTUN()
