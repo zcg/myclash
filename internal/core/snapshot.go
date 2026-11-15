@@ -71,7 +71,6 @@ func (s *State) View() Snapshot {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	v := s.v
-	v.Logs = append([]LogEntry(nil), s.v.Logs...)
 	v.History = append([]RateSample(nil), s.v.History...)
 	return v
 }

@@ -288,7 +288,7 @@ func (a *App) toggleLogsPaused() {
 		a.frozenLogs = nil
 		return
 	}
-	a.frozenLogs = append([]core.LogEntry(nil), a.state.View().Logs...)
+	a.frozenLogs = a.state.RecentLogs(2000)
 	a.logsPaused = true
 }
 
