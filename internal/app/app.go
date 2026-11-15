@@ -104,94 +104,97 @@ type App struct {
 	lastTrafficPaint time.Time
 	lastConnPaint    time.Time
 
-	connState        ui.ListState
-	ruleState        ui.ListState
-	logState         ui.ListState
-	connSearch       string
-	ruleSearch       string
-	logSearch        string
-	logLevelFilter   int
-	logRetentionIdx  int
-	logMaxMB         int
-	logMaxText       string
-	testDelayURL     string
-	testSpeedURL     string
-	siteResults      []siteResult
-	siteTesting      bool
-	paletteOpen      bool
-	paletteQuery     string
-	paletteIndex     int
-	floating         *mygo.Window
-	trafficPath      string
-	trafficHistory   []trafficPoint
-	lastTrafficSave  time.Time
-	lastTrafficFlush time.Time
-	trafficPending   []trafficPoint
-	trafficState     ui.ListState
-	uwpApps          []platform.UWPApp
-	uwpSearch        string
-	uwpLoaded        bool
-	uwpBusy          bool
-	uwpList          ui.ListState
-	proxySearch      string
-	proxySortIdx     int
-	proxyExpanded    map[string]bool
-	proxyColsIdx     int
-	proxyLastSearch  string
-	proxyGroup       string
-	proxyNode        string
-	lastProxyNow     map[string]string
-	connRates        map[string]connRate
-	connSortIdx      int
-	scrollProxyGroup string
-	logsPaused       bool
-	connPaused       bool
-	frozenConns      []core.Connection
-	frozenLogs       []core.LogEntry
-	override         *editor.State
-	overrideUID      string
-	baseEdit         *editor.State
-	baseUID          string
-	dnsName          string
-	dnsEnable        bool
-	dnsListen        string
-	dnsNameservers   string
-	dnsFallback      string
-	dnsFakeIPRange   string
-	dnsModeIdx       int
-	unifiedDelay     bool
-	tcpConcurrent    bool
-	findProcessIdx   int
-	fingerprint      string
-	iface            string
-	routingMark      string
-	sniffEnable      bool
-	sniffForceDNS    bool
-	sniffOverride    bool
-	sniffPureIP      bool
-	sniffHTTP        string
-	sniffTLS         string
-	sniffQUIC        string
-	sniffSkip        string
-	sniffForce       string
-	sniffSkipSrc     string
-	sniffSkipDst     string
-	tunEnable        bool
-	tunStackIdx      int
-	tunDevice        string
-	tunAutoRoute     bool
-	tunStrictRoute   bool
-	tunDNSHijack     bool
-	tunAutoDetect    bool
-	tunProxyWasOn    bool
-	delays           map[string]int
-	delayErrs        map[string]string
-	speeds           map[string]float64
-	speedErrs        map[string]string
-	proxyProviders   []core.Provider
-	ruleProviders    []core.Provider
-	proxyProvState   ui.ListState
-	ruleProvState    ui.ListState
+	connState         ui.ListState
+	ruleState         ui.ListState
+	logState          ui.ListState
+	connSearch        string
+	ruleSearch        string
+	logSearch         string
+	logLevelFilter    int
+	logRetentionIdx   int
+	logMaxMB          int
+	logMaxText        string
+	testDelayURL      string
+	testSpeedURL      string
+	siteResults       []siteResult
+	siteTesting       bool
+	paletteOpen       bool
+	paletteQuery      string
+	paletteIndex      int
+	floating          *mygo.Window
+	trafficPath       string
+	trafficHistory    []trafficPoint
+	lastTrafficSave   time.Time
+	lastTrafficFlush  time.Time
+	trafficPending    []trafficPoint
+	trafficState      ui.ListState
+	uwpApps           []platform.UWPApp
+	uwpSearch         string
+	uwpLoaded         bool
+	uwpBusy           bool
+	uwpList           ui.ListState
+	proxySearch       string
+	proxySortIdx      int
+	proxyExpanded     map[string]bool
+	proxyColsIdx      int
+	proxyLastSearch   string
+	proxyGroup        string
+	proxyNode         string
+	lastProxyNow      map[string]string
+	connRates         map[string]connRate
+	connSortIdx       int
+	scrollProxyGroup  string
+	logsPaused        bool
+	connPaused        bool
+	frozenConns       []core.Connection
+	frozenLogs        []core.LogEntry
+	override          *editor.State
+	overrideUID       string
+	overrideMode      int
+	overrideScript    *editor.State
+	overrideScriptUID string
+	baseEdit          *editor.State
+	baseUID           string
+	dnsName           string
+	dnsEnable         bool
+	dnsListen         string
+	dnsNameservers    string
+	dnsFallback       string
+	dnsFakeIPRange    string
+	dnsModeIdx        int
+	unifiedDelay      bool
+	tcpConcurrent     bool
+	findProcessIdx    int
+	fingerprint       string
+	iface             string
+	routingMark       string
+	sniffEnable       bool
+	sniffForceDNS     bool
+	sniffOverride     bool
+	sniffPureIP       bool
+	sniffHTTP         string
+	sniffTLS          string
+	sniffQUIC         string
+	sniffSkip         string
+	sniffForce        string
+	sniffSkipSrc      string
+	sniffSkipDst      string
+	tunEnable         bool
+	tunStackIdx       int
+	tunDevice         string
+	tunAutoRoute      bool
+	tunStrictRoute    bool
+	tunDNSHijack      bool
+	tunAutoDetect     bool
+	tunProxyWasOn     bool
+	delays            map[string]int
+	delayErrs         map[string]string
+	speeds            map[string]float64
+	speedErrs         map[string]string
+	proxyProviders    []core.Provider
+	ruleProviders     []core.Provider
+	proxyProvState    ui.ListState
+	ruleProvState     ui.ListState
 }
 
 // Run starts the application. It returns immediately when another instance is
@@ -1485,6 +1488,25 @@ func (a *App) saveOverride() {
 	}
 	a.mu.Lock()
 	a.status = "覆写已保存"
+	a.mu.Unlock()
+	if a.profiles.Selected() == current.UID && a.state.Get().Started {
+		a.restartCore()
+	} else {
+		a.invalidate()
+	}
+}
+
+func (a *App) saveScriptOverride() {
+	current, ok := a.profiles.CurrentMeta()
+	if !ok || a.overrideScript == nil {
+		return
+	}
+	if err := a.profiles.SaveScriptOverride(current.UID, a.overrideScript.Buffer.String()); err != nil {
+		a.setError(err)
+		return
+	}
+	a.mu.Lock()
+	a.status = "脚本覆写已保存"
 	a.mu.Unlock()
 	if a.profiles.Selected() == current.UID && a.state.Get().Started {
 		a.restartCore()

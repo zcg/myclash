@@ -799,7 +799,7 @@ func (a *App) pageOverride(c *ui.Context, p acrylic.Palette) {
 	current, ok := a.profiles.CurrentMeta()
 	ui.Column(c).Gap(2).Children(func() {
 		ui.Text(c, "覆写").FontSize(24).Bold()
-		ui.Text(c, "合并覆写作用于当前配置：映射深合并、列表前插/后插、delete 点路径").FontSize(12).TextColor(p.InkSubtle)
+		ui.Text(c, "YAML 合并：映射深合并、列表前插/后插、delete 点路径；JavaScript：function main(config) 返回新 config").FontSize(12).TextColor(p.InkSubtle)
 	})
 	if !ok {
 		ui.Text(c, "先添加并启用一个配置。").TextColor(p.InkMuted)
@@ -812,20 +812,43 @@ func (a *App) pageOverride(c *ui.Context, p acrylic.Palette) {
 		a.override = &editor.State{Buffer: buf}
 		a.overrideUID = current.UID
 	}
+	if a.overrideScript == nil || a.overrideScriptUID != current.UID {
+		data, _ := a.profiles.ScriptOverride(current.UID)
+		buf := editor.NewBuffer(string(data))
+		buf.SetLanguage(editor.LanguageFor("override.js"))
+		a.overrideScript = &editor.State{Buffer: buf}
+		a.overrideScriptUID = current.UID
+	}
+	ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+		acrylic.SegmentedText(c, p, &a.overrideMode, "YAML 合并", "JavaScript")
+	})
 	ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
 		ui.Textf(c, "当前配置：%s", current.Name).FontSize(11).TextColor(p.InkSubtle)
 		ui.Spacer(c)
 		if acrylic.PrimaryButton(c, p, "保存并重载", false).Clicked() {
-			a.saveOverride()
+			if a.overrideMode == 1 {
+				a.saveScriptOverride()
+			} else {
+				a.saveOverride()
+			}
 		}
 		if acrylic.Button(c, p, "清空", false).Clicked() {
-			a.override.Buffer.Set("")
-			a.saveOverride()
+			if a.overrideMode == 1 {
+				a.overrideScript.Buffer.Set("")
+				a.saveScriptOverride()
+			} else {
+				a.override.Buffer.Set("")
+				a.saveOverride()
+			}
 		}
 	})
 	a.errorBar(c, p)
 	ui.Column(c).Height(520).Background(p.Code).Radius(8).Padding(10).Clip().Children(func() {
-		editor.View(c, a.override).Fill()
+		view := a.override
+		if a.overrideMode == 1 {
+			view = a.overrideScript
+		}
+		editor.View(c, view).Fill()
 	})
 }
 

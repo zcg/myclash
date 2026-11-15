@@ -432,7 +432,32 @@ func (s *Store) SaveRaw(uid string, raw []byte) error {
 	}
 	return fmt.Errorf("config: profile %q not found", uid)
 }
-
 func (s *Store) Raw(uid string) ([]byte, error) {
 	return os.ReadFile(s.pathFor(uid))
+}
+
+func (s *Store) scriptPath(uid string) string {
+	return filepath.Join(s.dir, "overrides", uid+".js")
+}
+
+func (s *Store) ScriptOverride(uid string) ([]byte, error) {
+	if uid == "" {
+		return nil, nil
+	}
+	b, err := os.ReadFile(s.scriptPath(uid))
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	}
+	return b, err
+}
+
+func (s *Store) SaveScriptOverride(uid, script string) error {
+	if uid == "" {
+		return errors.New("config: empty profile uid")
+	}
+	path := s.scriptPath(uid)
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return err
+	}
+	return os.WriteFile(path, []byte(script), 0o600)
 }

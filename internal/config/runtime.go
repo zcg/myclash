@@ -106,6 +106,9 @@ func (s *Store) Runtime(opts Options) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("config: encode runtime: %w", err)
 	}
+	if script, err := s.ScriptOverride(p.UID); err == nil && len(script) > 0 {
+		return ApplyScript(out, script)
+	}
 	return out, nil
 }
 
