@@ -31,6 +31,13 @@ type connRate struct {
 	upRate, downRate float64
 }
 
+type siteResult struct {
+	Name string
+	OK   bool
+	MS   int64
+	Err  string
+}
+
 // App is the composition root: it owns the window, the core host, the profile
 // store and every page's shared state. Pages are methods on *App, so they can
 // read state without importing this package.
@@ -100,6 +107,13 @@ type App struct {
 	ruleSearch       string
 	logSearch        string
 	logLevelFilter   int
+	logRetentionIdx  int
+	logMaxMB         int
+	logMaxText       string
+	testDelayURL     string
+	testSpeedURL     string
+	siteResults      []siteResult
+	siteTesting      bool
 	proxySearch      string
 	proxySortIdx     int
 	proxyExpanded    map[string]bool
@@ -185,7 +199,6 @@ func (a *App) ready() {
 		return
 	}
 	a.dataDir = dir
-	a.openLogFile(dir)
 	a.settings, err = settings.NewStore(dir)
 	if err != nil {
 		a.fatal(err)
@@ -261,6 +274,13 @@ func (a *App) ready() {
 		a.dnsModeIdx = 0
 	}
 	a.settingsSection = "general"
+	a.logRetentionIdx = logRetentionIndex(s.Logs.Retention)
+	a.logMaxMB = s.Logs.MaxSizeMB
+	a.logMaxText = strconv.Itoa(a.logMaxMB)
+	a.testDelayURL = s.Test.DelayURL
+	a.testSpeedURL = s.Test.SpeedURL
+	a.openLogFile(dir)
+	go a.logMaintenance()
 	a.unifiedDelay = s.Advanced.UnifiedDelay
 	a.tcpConcurrent = s.Advanced.TCPConcurrent
 	a.findProcessIdx = findProcessIndex(s.Advanced.FindProcessMode)
@@ -885,15 +905,16 @@ func (a *App) delayErrFor(name string) (string, bool) {
 func (a *App) testDelay(name string) {
 	a.mu.Lock()
 	client := a.client
+	testURL := a.testDelayURL
 	a.mu.Unlock()
 	if client == nil {
 		return
 	}
-	go a.probeDelay(client, name)
+	go a.probeDelay(client, name, testURL)
 }
 
-func (a *App) probeDelay(client *core.Client, name string) {
-	ms, err := client.Delay(context.Background(), name, "", 5000)
+func (a *App) probeDelay(client *core.Client, name, testURL string) {
+	ms, err := client.Delay(context.Background(), name, testURL, 5000)
 	a.win.Update(func() {
 		a.mu.Lock()
 		if err != nil {
@@ -932,7 +953,7 @@ func (a *App) testGroupDelay(group string) {
 				defer wg.Done()
 				sem <- struct{}{}
 				defer func() { <-sem }()
-				a.probeDelay(client, member)
+				a.probeDelay(client, member, a.testDelayURL)
 			}()
 		}
 		wg.Wait()
@@ -1447,6 +1468,27 @@ func (a *App) toggleConnPaused() {
 	}
 	a.frozenConns = append([]core.Connection(nil), a.state.Get().Connections...)
 	a.connPaused = true
+}
+
+func logRetentionIndex(v string) int {
+	switch v {
+	case "forever":
+		return 0
+	case "day":
+		return 1
+	case "month":
+		return 3
+	default:
+		return 2
+	}
+}
+
+func logRetentionValue(idx int) string {
+	values := []string{"forever", "day", "week", "month"}
+	if idx < 0 || idx >= len(values) {
+		return "week"
+	}
+	return values[idx]
 }
 
 func logLevelIndex(v string) int {

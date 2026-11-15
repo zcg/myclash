@@ -23,7 +23,19 @@ type Settings struct {
 	Advanced Advanced `yaml:"advanced"`
 	Sniffer  Sniffer  `yaml:"sniffer"`
 	Hotkeys  Hotkeys  `yaml:"hotkeys"`
+	Logs     Logs     `yaml:"logs"`
 	TUN      TUN      `yaml:"tun"`
+	Test     Test     `yaml:"test"`
+}
+
+type Logs struct {
+	Retention string `yaml:"retention"` // forever | day | week | month
+	MaxSizeMB int    `yaml:"max_size_mb"`
+}
+
+type Test struct {
+	DelayURL string `yaml:"delay_url"`
+	SpeedURL string `yaml:"speed_url"`
 }
 
 type Hotkeys struct {
@@ -163,6 +175,14 @@ func Default() Settings {
 			TUN:         "CmdOrCtrl+Shift+T",
 			Mode:        "CmdOrCtrl+Shift+R",
 			Quit:        "CmdOrCtrl+Shift+Q",
+		},
+		Logs: Logs{
+			Retention: "week",
+			MaxSizeMB: 8,
+		},
+		Test: Test{
+			DelayURL: "https://www.gstatic.com/generate_204",
+			SpeedURL: "https://speed.cloudflare.com/__down?bytes=4000000",
 		},
 		TUN: TUN{
 			Stack:      DefaultTUNStack,
@@ -340,6 +360,20 @@ func normalize(v Settings) Settings {
 	}
 	if v.Advanced.Fingerprint == "" {
 		v.Advanced.Fingerprint = "chrome"
+	}
+	switch v.Logs.Retention {
+	case "forever", "day", "week", "month":
+	default:
+		v.Logs.Retention = "week"
+	}
+	if v.Logs.MaxSizeMB <= 0 || v.Logs.MaxSizeMB > 1024 {
+		v.Logs.MaxSizeMB = 8
+	}
+	if v.Test.DelayURL == "" {
+		v.Test.DelayURL = "https://www.gstatic.com/generate_204"
+	}
+	if v.Test.SpeedURL == "" {
+		v.Test.SpeedURL = "https://speed.cloudflare.com/__down?bytes=4000000"
 	}
 	return v
 }

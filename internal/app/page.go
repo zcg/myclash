@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -155,6 +156,44 @@ func (a *App) pageOverview(c *ui.Context, p acrylic.Palette) {
 					a.testDelay(proxy.Now)
 				}
 			})
+		})
+	})
+
+	connectivity := a.panel(c, p, opacity).Padding(a.cardPad())
+	connectivity.Children(func() {
+		results, testing := a.siteSnapshot()
+		ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+			ui.Text(c, "连通性").Bold()
+			ui.Text(c, "常用站点可达性").FontSize(11).TextColor(p.InkSubtle)
+			ui.Spacer(c)
+			label := "一键测试"
+			if testing {
+				label = "测试中…"
+			}
+			if acrylic.Button(c, p, label, testing).Clicked() {
+				a.testSites()
+			}
+		})
+		ui.Text(c, "经过当前 mixed 端口；HTTP 状态码低于 500 视为可达。").FontSize(11).TextColor(p.InkSubtle)
+		if len(results) == 0 {
+			ui.Text(c, "尚未测试。点击「一键测试」检查 Google、YouTube、ChatGPT、GitHub 等站点。").TextColor(p.InkMuted)
+			return
+		}
+		ui.Grid(c).Columns(3).Gap(6).Children(func() {
+			for _, r := range results {
+				r := r
+				ui.Row(c).Gap(8).AlignItems(ui.Center).Padding(6, 8).Radius(7).
+					Background(p.WashChip).Children(func() {
+					ui.Text(c, r.Name).FontSize(12).Bold().SingleLine().Grow(1)
+					if testing {
+						ui.Text(c, "…").TextColor(p.InkSubtle)
+					} else if r.OK {
+						ui.Textf(c, "%d ms", r.MS).FontSize(11).Bold().TextColor(p.Success)
+					} else {
+						ui.Text(c, "不可达").FontSize(11).TextColor(p.Danger)
+					}
+				})
+			}
 		})
 	})
 }
@@ -486,6 +525,29 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 		if acrylic.Button(c, p, "保存绕过列表", false).Clicked() {
 			a.saveBypass()
 		}
+		ui.Text(c, "测试 URL").FontSize(13).Bold()
+		ui.Text(c, "测延迟走 HEAD/204 小文件；测速下载下面这个真实文件。留空使用默认值。").FontSize(11).TextColor(p.InkSubtle)
+		ui.TextInput(c, &a.testDelayURL).Label("测延迟 URL").Width(520)
+		ui.TextInput(c, &a.testSpeedURL).Label("测速 URL（直链）").Width(520)
+		if acrylic.Button(c, p, "保存测试设置", false).Clicked() {
+			delayURL := strings.TrimSpace(a.testDelayURL)
+			if delayURL == "" {
+				delayURL = "https://www.gstatic.com/generate_204"
+			}
+			speedURL := strings.TrimSpace(a.testSpeedURL)
+			if speedURL == "" {
+				speedURL = "https://speed.cloudflare.com/__down?bytes=4000000"
+			}
+			a.testDelayURL, a.testSpeedURL = delayURL, speedURL
+			if err := a.settings.Update(func(s *settings.Settings) {
+				s.Test.DelayURL = delayURL
+				s.Test.SpeedURL = speedURL
+			}); err != nil {
+				a.setError(err)
+			} else {
+				a.setStatus("测试 URL 已保存")
+			}
+		}
 		ui.Text(c, "TUN 需要管理员权限；开启后会自动提权重启。").FontSize(11).TextColor(p.InkSubtle)
 
 	case "general":
@@ -516,6 +578,38 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 
 	case "data":
 		ui.Text(c, "数据").FontSize(15).Bold()
+		ui.Text(c, "日志会写到数据目录的 logs/core.log；保留策略只影响这个文件。").FontSize(11).TextColor(p.InkSubtle)
+		ui.Text(c, "保留时间").FontSize(11).TextColor(p.InkSubtle)
+		acrylic.SegmentedText(c, p, &a.logRetentionIdx, "永久", "1 天", "7 天", "30 天")
+		ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
+			ui.TextInput(c, &a.logMaxText).Label("单文件上限 MB").Width(150)
+			if acrylic.Button(c, p, "应用日志策略", false).Clicked() {
+				mb := atoiSafe(a.logMaxText)
+				if mb <= 0 {
+					mb = 8
+				}
+				if mb > 1024 {
+					mb = 1024
+				}
+				if err := a.settings.Update(func(s *settings.Settings) {
+					s.Logs.Retention = logRetentionValue(a.logRetentionIdx)
+					s.Logs.MaxSizeMB = mb
+				}); err != nil {
+					a.setError(err)
+					return
+				}
+				a.mu.Lock()
+				a.logMaxMB = mb
+				a.logMaxText = strconv.Itoa(mb)
+				a.mu.Unlock()
+				a.cleanupLogs()
+				a.setStatus("日志策略已应用")
+			}
+			if acrylic.Button(c, p, "立即清空日志", false).Clicked() {
+				a.clearLogs()
+				a.setStatus("日志已清空")
+			}
+		})
 		ui.Textf(c, "配置目录：%s", a.dataDir).FontSize(11).TextColor(p.InkMuted)
 		ui.Text(c, "备份包含设置、订阅、覆写与日志；诊断包不包含订阅原始配置。").FontSize(11).TextColor(p.InkSubtle)
 		ui.Row(c).Gap(8).Wrap().Children(func() {

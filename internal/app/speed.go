@@ -11,9 +11,8 @@ import (
 	"myclash/internal/core"
 )
 
-// speedEndpoint is small enough to finish in a few seconds on a normal link,
-// large enough that connection setup does not dominate.
-const speedEndpoint = "https://speed.cloudflare.com/__down?bytes=4000000"
+// Speed tests download a real file through the mixed port; the URL is
+// configurable in Settings so users can pick a nearby mirror.
 
 func (a *App) speedFor(name string) (float64, bool) {
 	a.mu.Lock()
@@ -44,13 +43,14 @@ func (a *App) speedFailed(name string) {
 func (a *App) testSpeed(group, name string) {
 	a.mu.Lock()
 	client := a.client
+	speedURL := a.testSpeedURL
 	a.mu.Unlock()
 	if client == nil {
 		return
 	}
 	port := a.settings.Get().Core.MixedPort
 	go func() {
-		mbps, err := a.measureSpeed(client, group, name, port)
+		mbps, err := a.measureSpeed(client, group, name, port, speedURL)
 		if err != nil {
 			a.speedFailed(name)
 			return
@@ -68,6 +68,7 @@ func (a *App) testSpeed(group, name string) {
 func (a *App) testGroupSpeed(group string) {
 	a.mu.Lock()
 	client := a.client
+	speedURL := a.testSpeedURL
 	a.mu.Unlock()
 	if client == nil {
 		return
@@ -81,7 +82,7 @@ func (a *App) testGroupSpeed(group string) {
 	members := proxies[group].All
 	go func() {
 		for _, member := range members {
-			mbps, err := a.measureSpeed(client, group, member, port)
+			mbps, err := a.measureSpeed(client, group, member, port, speedURL)
 			if err != nil {
 				a.speedFailed(member)
 				continue
@@ -101,8 +102,8 @@ func (a *App) testGroupSpeed(group string) {
 	}()
 }
 
-func (a *App) measureSpeed(client *core.Client, group, name string, port int) (float64, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+func (a *App) measureSpeed(client *core.Client, group, name string, port int, speedURL string) (float64, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
 	defer cancel()
 	proxies, err := client.Proxies(ctx)
 	if err != nil {
@@ -120,8 +121,8 @@ func (a *App) measureSpeed(client *core.Client, group, name string, port int) (f
 
 	proxyURL := &url.URL{Scheme: "http", Host: fmt.Sprintf("127.0.0.1:%d", port)}
 	tr := &http.Transport{Proxy: http.ProxyURL(proxyURL)}
-	httpClient := &http.Client{Transport: tr, Timeout: 20 * time.Second}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, speedEndpoint, nil)
+	httpClient := &http.Client{Transport: tr, Timeout: 10 * time.Second}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, speedURL, nil)
 	if err != nil {
 		return 0, err
 	}

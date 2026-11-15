@@ -153,14 +153,23 @@ func (a *App) proxyNodeCard(c *ui.Context, p acrylic.Palette, s core.Snapshot, g
 		})
 		ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
 			if ms, ok := a.delayFor(member); ok {
-				ui.Textf(c, "%d ms", ms).FontSize(10).TextColor(p.InkMuted)
+				color := p.Success
+				switch {
+				case ms >= 500:
+					color = p.Danger
+				case ms >= 200:
+					color = p.Warning
+				}
+				ui.Textf(c, "%d ms", ms).FontSize(12).Bold().TextColor(color)
 			} else if msg, ok := a.delayErrFor(member); ok {
-				ui.Text(c, msg).FontSize(10).TextColor(p.Danger).SingleLine()
+				ui.Text(c, msg).FontSize(11).TextColor(p.Danger).SingleLine()
 			} else {
 				ui.Text(c, "未测延迟").FontSize(10).TextColor(p.InkSubtle)
 			}
 			if mbps, ok := a.speedFor(member); ok {
-				ui.Textf(c, "%.1f Mbps", mbps).FontSize(10).TextColor(p.InkMuted)
+				ui.Textf(c, "%.1f Mbps", mbps).FontSize(12).Bold().TextColor(p.Success)
+			} else if msg, ok := a.speedErrFor(member); ok {
+				ui.Text(c, msg).FontSize(10).TextColor(p.Danger).SingleLine()
 			}
 		})
 		ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
