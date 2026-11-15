@@ -2,8 +2,11 @@ package app
 
 import (
 	_ "embed"
+	"time"
 
 	"github.com/egoist/mygo"
+
+	"myclash/internal/platform"
 )
 
 //go:embed tray.png
@@ -115,4 +118,16 @@ func (a *App) registerHotkeys() {
 		a.applyMode(a.modeIdx)
 		a.refreshTrayMenu()
 	})
+}
+
+func (a *App) quitApp() {
+	a.forceQuit = true
+	// The native menu can keep the event loop busy; if a clean quit does not
+	// finish, terminate the process so Windows removes the notification icon.
+	time.AfterFunc(1200*time.Millisecond, platform.ForceQuit)
+	if a.tray != nil {
+		a.tray.Destroy()
+		a.tray = nil
+	}
+	go mygo.App.Quit()
 }

@@ -17,3 +17,6 @@ func IsElevated() bool { return false }
 
 // RelaunchElevated is only implemented on Windows.
 func RelaunchElevated() error { return ErrUnsupported }
+
+// ForceQuit terminates this process immediately.
+func ForceQuit() { os.Exit(0) }

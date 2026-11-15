@@ -144,3 +144,8 @@ func RelaunchElevated() error {
 	}
 	return cmd.Process.Release()
 }
+
+// ForceQuit terminates this process immediately.
+func ForceQuit() {
+	_ = windows.TerminateProcess(windows.CurrentProcess(), 0)
+}

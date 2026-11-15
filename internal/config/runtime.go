@@ -135,6 +135,9 @@ func inject(doc map[string]any, opts Options) {
 		doc["rules"] = []any{"MATCH,DIRECT"}
 	}
 	if opts.TUN.Enable {
+		if opts.TUN.Stack == "" {
+			opts.TUN.Stack = "mips"
+		}
 		tun := map[string]any{
 			"enable":                true,
 			"stack":                 opts.TUN.Stack,

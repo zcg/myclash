@@ -74,6 +74,8 @@ type Advanced struct {
 	RoutingMark     int    `yaml:"routing_mark"`
 }
 
+const DefaultTUNStack = "mips"
+
 type TUN struct {
 	Enable      bool   `yaml:"enable"`
 	Stack       string `yaml:"stack"` // system | gvisor | mixed | mips
@@ -159,7 +161,7 @@ func Default() Settings {
 			Mode:        "CmdOrCtrl+Shift+R",
 		},
 		TUN: TUN{
-			Stack:      "mips",
+			Stack:      DefaultTUNStack,
 			Device:     "myclash",
 			AutoRoute:  true,
 			DNSHijack:  true,
@@ -301,7 +303,7 @@ func normalize(v Settings) Settings {
 	switch v.TUN.Stack {
 	case "system", "gvisor", "mixed", "mips":
 	default:
-		v.TUN.Stack = "mips"
+		v.TUN.Stack = DefaultTUNStack
 	}
 	if v.UI.Preset != "clear" && v.UI.Preset != "solid" {
 		v.UI.Preset = "glass"
