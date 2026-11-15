@@ -9,7 +9,7 @@ import (
 )
 
 func (a *App) pageTraffic(c *ui.Context, p acrylic.Palette) {
-	a.header(c, p, "流量", "按 30 秒采样的上下行历史；保留 7 天")
+	a.header(c, p, "流量", "按 60 秒采样的上下行历史；保留 7 天")
 	hist := a.trafficHistorySnapshot()
 	ui.Row(c).Gap(10).AlignItems(ui.Center).Wrap().Children(func() {
 		s := a.state.View()
@@ -22,7 +22,7 @@ func (a *App) pageTraffic(c *ui.Context, p acrylic.Palette) {
 	})
 	a.errorBar(c, p)
 	if len(hist) < 2 {
-		ui.Text(c, "还没有足够的历史采样。内核运行后每 30 秒记录一次。").TextColor(p.InkMuted)
+		ui.Text(c, "还没有足够的历史采样。内核运行后每 60 秒记录一次。").TextColor(p.InkMuted)
 		return
 	}
 	down := make([]float64, 0, len(hist))

@@ -45,7 +45,7 @@ func (a *App) recordTraffic(up, down int64) {
 		return
 	}
 	now := time.Now()
-	if now.Sub(a.lastTrafficSave) < 30*time.Second {
+	if now.Sub(a.lastTrafficSave) < 60*time.Second {
 		return
 	}
 	a.lastTrafficSave = now
@@ -59,10 +59,10 @@ func (a *App) recordTraffic(up, down int64) {
 	}
 	a.trafficHistory = append(a.trafficHistory, p)
 	a.trafficPending = append(a.trafficPending, p)
-	if len(a.trafficHistory) > 25000 {
-		a.trafficHistory = a.trafficHistory[len(a.trafficHistory)-25000:]
+	if len(a.trafficHistory) > 12000 {
+		a.trafficHistory = a.trafficHistory[len(a.trafficHistory)-12000:]
 	}
-	// Buffer to disk every five minutes: 30s samples in memory, 288 writes a
+	// Buffer to disk every five minutes: 60s samples in memory, 144 writes a
 	// day instead of 2880, and at most five minutes lost on a hard crash.
 	if now.Sub(a.lastTrafficFlush) >= 5*time.Minute {
 		a.flushTrafficLocked()
