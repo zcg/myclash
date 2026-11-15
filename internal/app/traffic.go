@@ -21,6 +21,7 @@ type trafficPoint struct {
 func (a *App) loadTrafficHistory(dir string) {
 	path := filepath.Join(dir, "traffic.jsonl")
 	a.trafficPath = path
+	a.lastTrafficFlush = time.Now()
 	f, err := os.Open(path)
 	if err != nil {
 		return
@@ -57,16 +58,40 @@ func (a *App) recordTraffic(up, down int64) {
 		TotalDown: s.TotalDown,
 	}
 	a.trafficHistory = append(a.trafficHistory, p)
+	a.trafficPending = append(a.trafficPending, p)
 	if len(a.trafficHistory) > 25000 {
 		a.trafficHistory = a.trafficHistory[len(a.trafficHistory)-25000:]
+	}
+	// Buffer to disk every five minutes: 30s samples in memory, 288 writes a
+	// day instead of 2880, and at most five minutes lost on a hard crash.
+	if now.Sub(a.lastTrafficFlush) >= 5*time.Minute {
+		a.flushTrafficLocked()
+	}
+}
+
+func (a *App) flushTrafficHistory() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.flushTrafficLocked()
+}
+
+func (a *App) flushTrafficLocked() {
+	if a.trafficPath == "" || len(a.trafficPending) == 0 {
+		return
 	}
 	f, err := os.OpenFile(a.trafficPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
 	if err != nil {
 		return
 	}
 	defer f.Close()
-	b, _ := json.Marshal(p)
-	_, _ = f.Write(append(b, '\n'))
+	for _, p := range a.trafficPending {
+		b, _ := json.Marshal(p)
+		if _, err := f.Write(append(b, '\n')); err != nil {
+			return
+		}
+	}
+	a.trafficPending = nil
+	a.lastTrafficFlush = time.Now()
 }
 
 func (a *App) trafficSeries(limit int, down bool) []float64 {

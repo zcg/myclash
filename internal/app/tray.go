@@ -151,6 +151,7 @@ func (a *App) quitApp() {
 	// let a stuck shutdown keep the process alive. App.Quit depends on the
 	// native event loop finishing; in this path that is exactly what is broken.
 	go func() {
+		a.flushTrafficHistory()
 		done := make(chan struct{})
 		go func() {
 			a.stopCore()

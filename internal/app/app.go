@@ -121,6 +121,8 @@ type App struct {
 	trafficPath      string
 	trafficHistory   []trafficPoint
 	lastTrafficSave  time.Time
+	lastTrafficFlush time.Time
+	trafficPending   []trafficPoint
 	trafficState     ui.ListState
 	uwpApps          []platform.UWPApp
 	uwpSearch        string
@@ -212,6 +214,7 @@ func (a *App) ready() {
 		return
 	}
 	a.dataDir = dir
+	a.loadTrafficHistory(dir)
 	a.settings, err = settings.NewStore(dir)
 	if err != nil {
 		a.fatal(err)
@@ -230,6 +233,7 @@ func (a *App) ready() {
 		a.forceQuit = true
 	})
 	mygo.App.OnQuit(func() {
+		a.flushTrafficHistory()
 		a.closeLogFile()
 
 		if a.proxyOwned && a.systemProxy && a.sysproxy != nil {
