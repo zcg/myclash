@@ -668,6 +668,9 @@ func (a *App) currentNode(s core.Snapshot) (string, core.Proxy, bool) {
 	a.mu.Unlock()
 	if group != "" {
 		if p, ok := s.Proxies[group]; ok && p.Now != "" {
+			if node != "" {
+				p.Now = node
+			}
 			return group, p, true
 		}
 		if p, ok := s.Proxies[node]; ok && p.Now != "" {
