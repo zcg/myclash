@@ -94,6 +94,8 @@ type App struct {
 	proxyExpanded   map[string]bool
 	proxyColsIdx    int
 	proxyLastSearch string
+	proxyGroup      string
+	proxyNode       string
 	logsPaused      bool
 	connPaused      bool
 	frozenConns     []core.Connection

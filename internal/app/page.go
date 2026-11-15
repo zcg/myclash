@@ -138,7 +138,7 @@ func (a *App) pageOverview(c *ui.Context, p acrylic.Palette) {
 					a.router.Push("/proxies")
 				}
 			})
-			group, proxy, ok := currentNode(s)
+			group, proxy, ok := a.currentNode(s)
 			if !ok {
 				ui.Text(c, "内核启动后显示当前节点。").TextColor(p.InkSubtle)
 				return
@@ -662,7 +662,18 @@ func rateSeries(h []core.RateSample, down bool) []float64 {
 	return out
 }
 
-func currentNode(s core.Snapshot) (string, core.Proxy, bool) {
+func (a *App) currentNode(s core.Snapshot) (string, core.Proxy, bool) {
+	a.mu.Lock()
+	group, node := a.proxyGroup, a.proxyNode
+	a.mu.Unlock()
+	if group != "" {
+		if p, ok := s.Proxies[group]; ok && p.Now != "" {
+			return group, p, true
+		}
+		if p, ok := s.Proxies[node]; ok && p.Now != "" {
+			return node, p, true
+		}
+	}
 	if p, ok := s.Proxies["GLOBAL"]; ok && p.Now != "" {
 		return "GLOBAL", p, true
 	}
