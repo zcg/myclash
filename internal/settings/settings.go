@@ -316,9 +316,8 @@ func normalize(v Settings) Settings {
 	if v.Schema == 0 {
 		v.Schema = Schema
 	}
-	if v.App.RunMode != "lightweight" {
-		v.App.RunMode = "standard"
-	}
+	v.App.RunMode = "standard"
+	v.App.AgentTray = false
 	if v.App.Language == "" {
 		v.App.Language = "auto"
 	}

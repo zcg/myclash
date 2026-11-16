@@ -3,8 +3,6 @@ package app
 import (
 	"errors"
 	"fmt"
-	"os"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -577,29 +575,6 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 	case "general":
 		ui.Text(c, i18n.T("常规", "General")).FontSize(15).Bold()
 		ui.Text(c, "启动、关闭与登录时的应用行为。").FontSize(11).TextColor(p.InkSubtle)
-		ui.Text(c, "运行模式").FontSize(11).TextColor(p.InkSubtle)
-		if seg := acrylic.SegmentedText(c, p, &a.runModeIdx, "标准（单进程）", "轻量（Agent）"); seg.Changed() {
-			mode := "standard"
-			if a.runModeIdx == 1 {
-				mode = "lightweight"
-			}
-			if err := a.settings.Update(func(s *settings.Settings) { s.App.RunMode = mode }); err != nil {
-				a.setError(err)
-			} else {
-				a.setStatus("运行模式已保存；关闭窗口后按该模式运行")
-			}
-		}
-		ui.Text(c, "轻量模式关闭窗口后由 Agent 保留内核与托盘；再次打开窗口只附着 Agent，不再启动第二套内核。").
-			FontSize(11).TextColor(p.InkSubtle)
-		ui.Text(c, "启动时自动启用：打开应用后直接启动上次选中的 Profile；关闭时保留在托盘：点关闭不退出进程。").
-			FontSize(11).TextColor(p.InkSubtle)
-		if acrylic.Checkbox(c, p, &a.agentTray, "轻量模式保留托盘（约多 50MB，换取随时拉起窗口）").Changed() {
-			if err := a.settings.Update(func(s *settings.Settings) { s.App.AgentTray = a.agentTray }); err != nil {
-				a.setError(err)
-			}
-		}
-		ui.Text(c, "关闭托盘后，轻量模式只保留裸内核；再次启动应用会 attach，设置→关于可退出内核。").
-			FontSize(11).TextColor(p.InkSubtle)
 		ui.Text(c, "语言").FontSize(11).TextColor(p.InkSubtle)
 		if seg := acrylic.SegmentedText(c, p, &a.languageIdx, "跟随系统", "简体中文", "English"); seg.Changed() {
 			lang := "auto"
@@ -613,16 +588,6 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 			} else {
 				i18n.Set(lang)
 				a.invalidate()
-			}
-		}
-		if runtime.GOOS == "windows" {
-			if acrylic.Checkbox(c, p, &a.elevatedAgent, "登录时以管理员启动 Agent（TUN 需要）").Changed() {
-				if err := platform.SetAgentAtLogin(a.elevatedAgent); err != nil {
-					a.elevatedAgent = !a.elevatedAgent
-					a.setError(err)
-				} else {
-					a.setStatus("登录提权 Agent 已更新")
-				}
 			}
 		}
 		changed := false
@@ -650,8 +615,6 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 				s.App.Notifications = a.notifications
 			})
 		}
-		ui.Text(c, "轻量模式（M3）：关闭窗口后由后台 Agent 保留内核与托盘。").FontSize(11).TextColor(p.InkSubtle)
-
 	case "data":
 		ui.Text(c, i18n.T("数据", "Data")).FontSize(15).Bold()
 		ui.Text(c, "日志会写到数据目录的 logs/core.log；保留策略只影响这个文件。").FontSize(11).TextColor(p.InkSubtle)
@@ -731,12 +694,6 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 		ui.Text(c, "GPL-3.0 · 源码与问题反馈见仓库").FontSize(11).TextColor(p.InkSubtle)
 		if acrylic.Button(c, p, "退出 myclash", false).Clicked() {
 			a.quitApp()
-			if a.attach {
-				if acrylic.Button(c, p, "退出轻量内核 Agent", false).Clicked() {
-					_ = a.agentRequest("/quit")
-					os.Exit(0)
-				}
-			}
 		}
 
 	case "advanced":

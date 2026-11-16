@@ -222,24 +222,14 @@ type App struct {
 // Run starts the application. It returns immediately when another instance is
 // already running (that instance gets activated instead).
 func Run() error {
-	if hasArg("--core") {
-		return runCore()
-	}
-	if hasArg("--agent") {
-		return runTrayAgent()
-	}
-	attach := hasArg("--attach") || agentAlive()
-	if !attach {
-		if !mygo.App.RequestSingleInstanceLock() {
-			return nil
-		}
+	if !mygo.App.RequestSingleInstanceLock() {
+		return nil
 	}
 	a := &App{
 		state:  core.NewState(),
 		router: ui.NewRouter("/overview"),
 		side:   "overview",
 		ctx:    context.Background(),
-		attach: attach,
 	}
 	a.cancel = func() {}
 	mygo.App.WhenReady(a.ready)
@@ -418,31 +408,15 @@ func (a *App) ready() {
 	}
 	a.win = mygo.NewWindow(opts)
 	a.win.OnClose(func(e *mygo.CloseEvent) {
-		if a.attach {
-			os.Exit(0)
-		}
-		if a.settings.Get().App.RunMode == "lightweight" && !a.forceQuit {
-			e.PreventDefault()
-			a.switchToAgent()
-			return
-		}
 		if a.closeTray && !a.forceQuit {
 			e.PreventDefault()
 			a.win.Hide()
 		}
 	})
-	if a.attach {
-		if err := a.attachAgent(); err != nil {
-			a.attach = false
-			a.setError(err)
-		}
-	}
-	if !a.attach {
-		a.setupTray()
-		a.registerHotkeys()
-	}
+	a.setupTray()
+	a.registerHotkeys()
 
-	if !a.attach && s.App.AutoStartProfile && a.profiles.Selected() != "" {
+	if s.App.AutoStartProfile && a.profiles.Selected() != "" {
 		a.startCore()
 	}
 }
