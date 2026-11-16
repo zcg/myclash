@@ -219,8 +219,11 @@ type App struct {
 // Run starts the application. It returns immediately when another instance is
 // already running (that instance gets activated instead).
 func Run() error {
+	if hasArg("--core") {
+		return runCore()
+	}
 	if hasArg("--agent") {
-		return runAgent()
+		return runTrayAgent()
 	}
 	attach := hasArg("--attach") || agentAlive()
 	if !attach {
@@ -328,8 +331,8 @@ func (a *App) ready() {
 	a.connRates = map[string]connRate{}
 	// Pages cross-fade instead of snapping; springs keep a quick "push"
 	// responsive when the user is switching back and forth.
-	a.router.Transition = ui.TransitionMatch
-	a.router.Animation = &ui.Smooth
+	a.router.Transition = ui.TransitionNone
+	a.router.Animation = nil
 	a.proxyColsIdx = 3
 	a.proxySortIdx = 1
 	a.bypass = strings.Join(s.Proxy.Bypass, ";")
