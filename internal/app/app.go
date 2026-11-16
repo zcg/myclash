@@ -119,6 +119,8 @@ type App struct {
 	lastConnPaint    time.Time
 
 	connState         ui.ListState
+	connDetailOpen    bool
+	connDetail        core.Connection
 	ruleState         ui.ListState
 	logState          ui.ListState
 	connSearch        string

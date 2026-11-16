@@ -24,7 +24,7 @@ var connColumns = []ui.TableColumn{
 	{Title: "上传", Width: 78, Align: ui.End},
 	{Title: "下载", Width: 78, Align: ui.End},
 	{Title: "时长", Width: 70, Align: ui.End},
-	{Title: "操作", Width: 64, Align: ui.End},
+	{Title: "操作", Width: 116, Align: ui.End},
 }
 
 func (a *App) pageConnections(c *ui.Context, p acrylic.Palette) {
@@ -79,13 +79,13 @@ func (a *App) pageConnections(c *ui.Context, p acrylic.Palette) {
 			conn := rows[row]
 			switch col {
 			case 0:
-				ui.Text(c, connHost(conn)).SingleLine()
+				ui.Text(c, connHost(conn)).SingleLine().Tooltip(connHost(conn))
 			case 1:
-				ui.Text(c, connProcess(conn)).SingleLine()
+				ui.Text(c, connProcess(conn)).SingleLine().Tooltip(connProcess(conn))
 			case 2:
-				ui.Text(c, conn.Rule).SingleLine()
+				ui.Text(c, conn.Rule).SingleLine().Tooltip(conn.Rule)
 			case 3:
-				ui.Text(c, strings.Join(conn.Chains, " → ")).SingleLine()
+				ui.Text(c, strings.Join(conn.Chains, " → ")).SingleLine().Tooltip(strings.Join(conn.Chains, " → "))
 			case 4:
 				up, down := a.connRateFor(conn.ID)
 				ui.Textf(c, "↑%s ↓%s", format.Rate(int64(up)), format.Rate(int64(down))).FontSize(11).SingleLine()
@@ -96,12 +96,17 @@ func (a *App) pageConnections(c *ui.Context, p acrylic.Palette) {
 			case 7:
 				ui.Text(c, time.Since(conn.Start).Round(time.Second).String()).SingleLine()
 			case 8:
+				if acrylic.Button(c, p, "详情", false).Clicked() {
+					a.connDetail = conn
+					a.connDetailOpen = true
+				}
 				if acrylic.Button(c, p, "关闭", false).Clicked() {
 					a.closeConnection(conn.ID)
 				}
 			}
 		}).Grow(1)
 	})
+	a.connectionDetailModal(c, p)
 }
 
 func connProcess(c core.Connection) string {
