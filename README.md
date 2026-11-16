@@ -142,11 +142,11 @@ mygo dev
 
 支持两种触发方式：
 
-1. **打 Tag**：Tag 必须与 `mygo.json` 的版本一致，例如版本是 `0.12.3`：
+1. **打 Tag**：Tag 必须与 `mygo.json` 的版本一致，例如版本是 `0.12.4`：
 
    ```bash
-   git tag v0.12.3
-   git push origin v0.12.3
+   git tag v0.12.4
+   git push origin v0.12.4
    ```
 
 2. **修改版本号**：只修改 `mygo.json` 的 `version` 并推送到 `main`，CI 会检测到
