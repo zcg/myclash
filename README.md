@@ -37,6 +37,8 @@ Rust/Tauri 进程。
 
 欢迎提交 Issue 和 PR。只要你愿意修，作者很乐意合并。
 
+![myclash 外观设置](./docs/screenshots/appearance.jpg)
+
 ## 功能
 
 - **订阅与配置**：订阅导入/更新、本地 mihomo YAML、配置切换
