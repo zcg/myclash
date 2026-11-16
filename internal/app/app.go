@@ -20,6 +20,7 @@ import (
 
 	"myclash/internal/config"
 	"myclash/internal/core"
+	"myclash/internal/i18n"
 	"myclash/internal/platform"
 	"myclash/internal/settings"
 	"myclash/internal/ui/acrylic"
@@ -90,6 +91,7 @@ type App struct {
 	acrylicTint      float64
 	scale            float64
 	monochromeIcons  bool
+	languageIdx      int
 	hotkeyShow       string
 	hotkeyProxy      string
 	hotkeyTUN        string
@@ -310,6 +312,17 @@ func (a *App) ready() {
 	a.acrylicOpacity = s.UI.AcrylicOpacity
 	a.scale = s.UI.Scale
 	a.monochromeIcons = s.UI.MonochromeIcons
+	a.languageIdx = 0
+	if s.App.Language == "zh-CN" {
+		a.languageIdx = 1
+	} else if s.App.Language == "en" {
+		a.languageIdx = 2
+	}
+	if a.languageIdx == 2 {
+		i18n.Set("en")
+	} else {
+		i18n.Set("zh-CN")
+	}
 	a.hotkeyShow = s.Hotkeys.Show
 	a.hotkeyProxy = s.Hotkeys.SystemProxy
 	a.hotkeyTUN = s.Hotkeys.TUN

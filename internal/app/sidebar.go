@@ -5,6 +5,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"myclash/internal/i18n"
 	"myclash/internal/ui/acrylic"
 	"myclash/internal/ui/icons"
 )
@@ -15,32 +16,32 @@ func (a *App) sidebar(c *ui.Context, p acrylic.Palette) {
 		return
 	}
 	sb := ui.Sidebar(c, &a.side, func() {
-		ui.SidebarSection(c, "主", nil, func() {
-			ui.SidebarItem(c, "overview", icons.Gauge, "概览")
-			ui.SidebarItem(c, "proxies", icons.Waypoints, "代理")
-			ui.SidebarItem(c, "profiles", icons.Layers, "配置")
+		ui.SidebarSection(c, i18n.T("主", "Main"), nil, func() {
+			ui.SidebarItem(c, "overview", icons.Gauge, i18n.T("概览", "Overview"))
+			ui.SidebarItem(c, "proxies", icons.Waypoints, i18n.T("代理", "Proxies"))
+			ui.SidebarItem(c, "profiles", icons.Layers, i18n.T("配置", "Profiles"))
 		})
-		ui.SidebarSection(c, "运行", nil, func() {
-			ui.SidebarItem(c, "connections", icons.Activity, "连接")
-			ui.SidebarItem(c, "traffic", icons.Gauge, "流量")
-			ui.SidebarItem(c, "rules", icons.ListTree, "规则")
-			ui.SidebarItem(c, "logs", icons.ScrollText, "日志")
+		ui.SidebarSection(c, i18n.T("运行", "Runtime"), nil, func() {
+			ui.SidebarItem(c, "connections", icons.Activity, i18n.T("连接", "Connections"))
+			ui.SidebarItem(c, "traffic", icons.Gauge, i18n.T("流量", "Traffic"))
+			ui.SidebarItem(c, "rules", icons.ListTree, i18n.T("规则", "Rules"))
+			ui.SidebarItem(c, "logs", icons.ScrollText, i18n.T("日志", "Logs"))
 		})
-		ui.SidebarSection(c, "网络", nil, func() {
-			ui.SidebarItem(c, "tun", icons.ShieldCheck, "TUN")
-			ui.SidebarItem(c, "dns", icons.Waypoints, "DNS")
-			ui.SidebarItem(c, "sniffer", icons.ScrollText, "嗅探")
-			ui.SidebarItem(c, "sysproxy", icons.ShieldCheck, "系统代理")
+		ui.SidebarSection(c, i18n.T("网络", "Network"), nil, func() {
+			ui.SidebarItem(c, "tun", icons.ShieldCheck, i18n.T("TUN", "TUN"))
+			ui.SidebarItem(c, "dns", icons.Waypoints, i18n.T("DNS", "DNS"))
+			ui.SidebarItem(c, "sniffer", icons.ScrollText, i18n.T("嗅探", "Sniffing"))
+			ui.SidebarItem(c, "sysproxy", icons.ShieldCheck, i18n.T("系统代理", "System proxy"))
 		})
-		ui.SidebarSection(c, "工具", nil, func() {
-			ui.SidebarItem(c, "override", icons.Layers, "覆写")
-			ui.SidebarItem(c, "resources", icons.Server, "资源")
+		ui.SidebarSection(c, i18n.T("工具", "Tools"), nil, func() {
+			ui.SidebarItem(c, "override", icons.Layers, i18n.T("覆写", "Override"))
+			ui.SidebarItem(c, "resources", icons.Server, i18n.T("资源", "Resources"))
 			if runtime.GOOS == "windows" {
-				ui.SidebarItem(c, "uwp", icons.ShieldCheck, "UWP 回环")
+				ui.SidebarItem(c, "uwp", icons.ShieldCheck, i18n.T("UWP 回环", "UWP loopback"))
 			}
 		})
-		ui.SidebarSection(c, "系统", nil, func() {
-			ui.SidebarItem(c, "settings", icons.Settings, "设置")
+		ui.SidebarSection(c, i18n.T("系统", "System"), nil, func() {
+			ui.SidebarItem(c, "settings", icons.Settings, i18n.T("设置", "Settings"))
 		})
 	}).Width(232).Background(ui.Transparent).BorderWidth(0, 1, 0, 0).BorderColor(p.Hairline)
 	if sb.Changed() {
@@ -58,30 +59,30 @@ func (a *App) monoSidebar(c *ui.Context, p acrylic.Palette) {
 		title string
 		items []navItem
 	}{
-		{"主", []navItem{
-			{"overview", "概览", icons.Gauge},
-			{"proxies", "代理", icons.Waypoints},
-			{"profiles", "配置", icons.Layers},
+		{i18n.T("主", "Main"), []navItem{
+			{"overview", i18n.T("概览", "Overview"), icons.Gauge},
+			{"proxies", i18n.T("代理", "Proxies"), icons.Waypoints},
+			{"profiles", i18n.T("配置", "Profiles"), icons.Layers},
 		}},
-		{"运行", []navItem{
-			{"connections", "连接", icons.Activity},
-			{"traffic", "流量", icons.Gauge},
-			{"rules", "规则", icons.ListTree},
-			{"logs", "日志", icons.ScrollText},
+		{i18n.T("运行", "Runtime"), []navItem{
+			{"connections", i18n.T("连接", "Connections"), icons.Activity},
+			{"traffic", i18n.T("流量", "Traffic"), icons.Gauge},
+			{"rules", i18n.T("规则", "Rules"), icons.ListTree},
+			{"logs", i18n.T("日志", "Logs"), icons.ScrollText},
 		}},
-		{"网络", []navItem{
-			{"tun", "TUN", icons.ShieldCheck},
-			{"dns", "DNS", icons.Waypoints},
-			{"sniffer", "嗅探", icons.ScrollText},
-			{"sysproxy", "系统代理", icons.ShieldCheck},
+		{i18n.T("网络", "Network"), []navItem{
+			{"tun", i18n.T("TUN", "TUN"), icons.ShieldCheck},
+			{"dns", i18n.T("DNS", "DNS"), icons.Waypoints},
+			{"sniffer", i18n.T("嗅探", "Sniffing"), icons.ScrollText},
+			{"sysproxy", i18n.T("系统代理", "System proxy"), icons.ShieldCheck},
 		}},
-		{"工具", []navItem{
-			{"override", "覆写", icons.Layers},
-			{"resources", "资源", icons.Server},
-			{"uwp", "UWP 回环", icons.ShieldCheck},
+		{i18n.T("工具", "Tools"), []navItem{
+			{"override", i18n.T("覆写", "Override"), icons.Layers},
+			{"resources", i18n.T("资源", "Resources"), icons.Server},
+			{"uwp", i18n.T("UWP 回环", "UWP loopback"), icons.ShieldCheck},
 		}},
-		{"系统", []navItem{
-			{"settings", "设置", icons.Settings},
+		{i18n.T("系统", "System"), []navItem{
+			{"settings", i18n.T("设置", "Settings"), icons.Settings},
 		}},
 	}
 	ui.Column(c).Width(232).Shrink(0).Background(ui.Transparent).

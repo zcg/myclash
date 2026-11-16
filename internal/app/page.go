@@ -14,6 +14,7 @@ import (
 	"github.com/egoist/mygo/ui/editor"
 
 	"myclash/internal/core"
+	"myclash/internal/i18n"
 	"myclash/internal/platform"
 	"myclash/internal/settings"
 	"myclash/internal/ui/acrylic"
@@ -99,7 +100,7 @@ func (a *App) pageOverview(c *ui.Context, p acrylic.Palette) {
 	ui.Row(c).Gap(12).AlignItems(ui.Stretch).Children(func() {
 		widgets.StatCard(c, p, opacity, "连接", fmt.Sprint(len(s.Connections)),
 			"会话总数", icons.Activity, p.Ink, nil)
-		widgets.StatCard(c, p, opacity, "内核", kernelVersion(s.Version),
+		widgets.StatCard(c, p, opacity, i18n.T("内核", "Core"), kernelVersion(s.Version),
 			"运行 "+uptime(s.StartedAt), icons.Server, p.Ink, nil)
 	})
 
@@ -427,9 +428,9 @@ func (a *App) pageSettings(c *ui.Context, p acrylic.Palette) {
 		nav := ui.Column(c).Width(176).Shrink(0).Gap(2)
 		nav.Children(func() {
 			sections := []struct{ id, label string }{
-				{"general", "常规"}, {"appearance", "外观"}, {"kernel", "内核"},
-				{"system", "系统"}, {"advanced", "高级内核"}, {"tray", "托盘"},
-				{"hotkeys", "热键"}, {"update", "更新"}, {"data", "数据"}, {"about", "关于"},
+				{"general", i18n.T("常规", "General")}, {"appearance", i18n.T("外观", "Appearance")}, {"kernel", i18n.T("内核", "Core")},
+				{"system", i18n.T("系统", "System")}, {"advanced", i18n.T("高级内核", "Advanced core")}, {"tray", i18n.T("托盘", "Tray")},
+				{"hotkeys", i18n.T("热键", "Hotkeys")}, {"update", i18n.T("更新", "Updates")}, {"data", i18n.T("数据", "Data")}, {"about", i18n.T("关于", "About")},
 			}
 			for _, s := range sections {
 				s := s
@@ -449,7 +450,7 @@ func (a *App) pageSettings(c *ui.Context, p acrylic.Palette) {
 func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 	switch a.settingsSection {
 	case "appearance":
-		ui.Text(c, "外观").FontSize(15).Bold()
+		ui.Text(c, i18n.T("外观", "Appearance")).FontSize(15).Bold()
 		ui.Text(c, "材质").FontSize(11).TextColor(p.InkSubtle)
 		labels := []string{"液态玻璃", "透明", "实色"}
 		if platform.AcrylicSupported() {
@@ -525,7 +526,7 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 		}
 
 	case "kernel":
-		ui.Text(c, "内核").FontSize(15).Bold()
+		ui.Text(c, i18n.T("内核", "Core")).FontSize(15).Bold()
 		ui.Text(c, "端口、转发模式与日志级别；端口改动会重启内核。").FontSize(11).TextColor(p.InkSubtle)
 		ui.Row(c).Gap(12).AlignItems(ui.Start).Children(func() {
 			acrylic.TextField(c, p, &a.mixed, acrylic.TextFieldOptions{
@@ -562,7 +563,7 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 		})
 
 	case "system":
-		ui.Text(c, "系统").FontSize(15).Bold()
+		ui.Text(c, i18n.T("系统", "System")).FontSize(15).Bold()
 		ui.Row(c).Gap(12).AlignItems(ui.Center).Children(func() {
 			ui.Column(c).Gap(2).Children(func() {
 				ui.Text(c, "系统代理").FontSize(14).Bold()
@@ -610,7 +611,7 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 		ui.Text(c, "TUN 需要管理员权限；开启后会自动提权重启。").FontSize(11).TextColor(p.InkSubtle)
 
 	case "general":
-		ui.Text(c, "常规").FontSize(15).Bold()
+		ui.Text(c, i18n.T("常规", "General")).FontSize(15).Bold()
 		ui.Text(c, "启动、关闭与登录时的应用行为。").FontSize(11).TextColor(p.InkSubtle)
 		ui.Text(c, "运行模式").FontSize(11).TextColor(p.InkSubtle)
 		if seg := acrylic.SegmentedText(c, p, &a.runModeIdx, "标准（单进程）", "轻量（Agent）"); seg.Changed() {
@@ -628,6 +629,21 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 			FontSize(11).TextColor(p.InkSubtle)
 		ui.Text(c, "启动时自动启用：打开应用后直接启动上次选中的 Profile；关闭时保留在托盘：点关闭不退出进程。").
 			FontSize(11).TextColor(p.InkSubtle)
+		ui.Text(c, "语言").FontSize(11).TextColor(p.InkSubtle)
+		if seg := acrylic.SegmentedText(c, p, &a.languageIdx, "跟随系统", "简体中文", "English"); seg.Changed() {
+			lang := "auto"
+			if a.languageIdx == 1 {
+				lang = "zh-CN"
+			} else if a.languageIdx == 2 {
+				lang = "en"
+			}
+			if err := a.settings.Update(func(st *settings.Settings) { st.App.Language = lang }); err != nil {
+				a.setError(err)
+			} else {
+				i18n.Set(lang)
+				a.invalidate()
+			}
+		}
 		if runtime.GOOS == "windows" {
 			if acrylic.Checkbox(c, p, &a.elevatedAgent, "登录时以管理员启动 Agent（TUN 需要）").Changed() {
 				if err := platform.SetAgentAtLogin(a.elevatedAgent); err != nil {
@@ -666,7 +682,7 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 		ui.Text(c, "轻量模式（M3）：关闭窗口后由后台 Agent 保留内核与托盘。").FontSize(11).TextColor(p.InkSubtle)
 
 	case "data":
-		ui.Text(c, "数据").FontSize(15).Bold()
+		ui.Text(c, i18n.T("数据", "Data")).FontSize(15).Bold()
 		ui.Text(c, "日志会写到数据目录的 logs/core.log；保留策略只影响这个文件。").FontSize(11).TextColor(p.InkSubtle)
 		ui.Text(c, "保留时间").FontSize(11).TextColor(p.InkSubtle)
 		acrylic.SegmentedText(c, p, &a.logRetentionIdx, "永久", "1 天", "7 天", "30 天")
@@ -739,7 +755,7 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 		})
 
 	case "about":
-		ui.Text(c, "关于").FontSize(15).Bold()
+		ui.Text(c, i18n.T("关于", "About")).FontSize(15).Bold()
 		ui.Textf(c, "myclash %s · mihomo %s", mygo.App.Version(), kernelVersion(a.state.View().Version)).FontSize(12).TextColor(p.InkMuted)
 		ui.Text(c, "GPL-3.0 · 源码与问题反馈见仓库").FontSize(11).TextColor(p.InkSubtle)
 		if acrylic.Button(c, p, "退出 myclash", false).Clicked() {
@@ -747,7 +763,7 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 		}
 
 	case "advanced":
-		ui.Text(c, "高级内核").FontSize(15).Bold()
+		ui.Text(c, i18n.T("高级内核", "Advanced core")).FontSize(15).Bold()
 		ui.Text(c, "只在明确知道影响时修改；保存会重启内核。").FontSize(11).TextColor(p.InkSubtle)
 		changed := false
 		if acrylic.Checkbox(c, p, &a.unifiedDelay, "unified-delay（统一延迟）").Changed() {
@@ -797,7 +813,7 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 			a.applyAdvanced()
 		}
 	case "tray":
-		ui.Text(c, "托盘").FontSize(15).Bold()
+		ui.Text(c, i18n.T("托盘", "Tray")).FontSize(15).Bold()
 		ui.Text(c, "关闭窗口后是否继续驻留，以及托盘菜单里能直接做什么。").FontSize(11).TextColor(p.InkSubtle)
 		if acrylic.Checkbox(c, p, &a.closeTray, "关闭窗口时保留在托盘").Changed() {
 			if err := a.settings.Update(func(s *settings.Settings) { s.App.CloseToTray = a.closeTray }); err != nil {
@@ -817,7 +833,7 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 		})
 
 	case "hotkeys":
-		ui.Text(c, "热键").FontSize(15).Bold()
+		ui.Text(c, i18n.T("热键", "Hotkeys")).FontSize(15).Bold()
 		ui.Text(c, "全局热键：窗口不在前台时也会触发。格式如 CmdOrCtrl+Shift+M，留空即禁用。").
 			FontSize(11).TextColor(p.InkSubtle)
 		type hotkeyEntry struct {
@@ -885,7 +901,7 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 		}
 
 	case "update":
-		ui.Text(c, "更新").FontSize(15).Bold()
+		ui.Text(c, i18n.T("更新", "Updates")).FontSize(15).Bold()
 		ui.Textf(c, "当前版本：%s", mygo.App.Version()).FontSize(12).TextColor(p.InkMuted)
 		if !mygo.Updater.Enabled() {
 			ui.Text(c, "开发版、便携版或未配置签名发布的构建不会自动更新；发布版从 GitHub Releases 检查签名更新。").FontSize(11).TextColor(p.InkSubtle)
