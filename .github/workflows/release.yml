@@ -131,12 +131,31 @@ jobs:
         run: |
           mygo build -platform "${{ matrix.platforms }}" -skip-notarize -o dist
 
-      - name: Keep per-platform checksums apart
+      - name: Make release asset names unique
         shell: bash
         run: |
           if [ -f dist/SHA256SUMS ]; then
             mv dist/SHA256SUMS "dist/SHA256SUMS-${{ matrix.artifact }}"
           fi
+
+          for dir in dist/windows-*; do
+            [ -d "$dir" ] || continue
+            arch="${dir##*-}"
+            if [ -f "$dir/myclash.exe" ]; then
+              mv "$dir/myclash.exe" "$dir/myclash-windows-$arch.exe"
+            fi
+            if [ -f "$dir/install.ps1" ]; then
+              mv "$dir/install.ps1" "$dir/install-windows-$arch.ps1"
+            fi
+          done
+
+          for dir in dist/linux-*; do
+            [ -d "$dir" ] || continue
+            arch="${dir##*-}"
+            if [ -f "$dir/PKGBUILD" ]; then
+              mv "$dir/PKGBUILD" "$dir/PKGBUILD-linux-$arch"
+            fi
+          done
 
       - uses: actions/upload-artifact@v4
         with:
@@ -175,6 +194,6 @@ jobs:
             release/**/*.deb
             release/**/*.rpm
             release/**/*.pkg.tar.zst
-            release/**/PKGBUILD
+            release/**/PKGBUILD*
             release/**/SHA256SUMS-*
-            release/**/install.ps1
+            release/**/install*.ps1
