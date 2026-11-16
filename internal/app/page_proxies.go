@@ -203,6 +203,14 @@ func proxyGroups(s core.Snapshot) []string {
 }
 
 func sortedMembers(a *App, s core.Snapshot, group string, by int) []string {
+	if by == 0 {
+		a.mu.Lock()
+		if cached, ok := a.proxyNameCache[group]; ok {
+			a.mu.Unlock()
+			return cached
+		}
+		a.mu.Unlock()
+	}
 	members := append([]string(nil), s.Proxies[group].All...)
 	switch by {
 	case 1:
@@ -231,6 +239,14 @@ func sortedMembers(a *App, s core.Snapshot, group string, by int) []string {
 		})
 	default:
 		sort.Strings(members)
+	}
+	if by == 0 {
+		a.mu.Lock()
+		if a.proxyNameCache == nil {
+			a.proxyNameCache = map[string][]string{}
+		}
+		a.proxyNameCache[group] = members
+		a.mu.Unlock()
 	}
 	return members
 }

@@ -155,6 +155,8 @@ type App struct {
 	proxySearch       string
 	proxySortIdx      int
 	proxyExpanded     map[string]bool
+	proxyNameCache    map[string][]string
+	proxyCacheGen     int
 	proxyColsIdx      int
 	proxyLastSearch   string
 	proxyGroup        string
@@ -327,6 +329,7 @@ func (a *App) ready() {
 	a.speeds = map[string]float64{}
 	a.speedErrs = map[string]string{}
 	a.proxyExpanded = map[string]bool{}
+	a.proxyNameCache = map[string][]string{}
 	a.lastProxyNow = map[string]string{}
 	a.connRates = map[string]connRate{}
 	// Pages cross-fade instead of snapping; springs keep a quick "push"
@@ -918,6 +921,8 @@ func (a *App) refreshProxies() {
 			return
 		}
 		a.mu.Lock()
+		a.proxyCacheGen++
+		a.proxyNameCache = map[string][]string{}
 		valid := make(map[string]bool, len(proxies))
 		for name := range proxies {
 			valid[name] = true
