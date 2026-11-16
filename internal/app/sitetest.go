@@ -11,20 +11,32 @@ import (
 )
 
 type siteTarget struct {
-	Name string
-	URL  string
+	Name   string
+	URL    string
+	Status int
 }
 
-// These are reachability probes, not a speed benchmark: any real HTTP
-// response below 500 means the proxy path reached the site.
+// These are reachability probes, not a speed benchmark. generate_204
+// endpoints intentionally return 204; every other target must return 200.
 var siteTargets = []siteTarget{
-	{"Google", "https://www.google.com/generate_204"},
-	{"YouTube", "https://www.youtube.com/generate_204"},
-	{"ChatGPT", "https://chatgpt.com/"},
-	{"GitHub", "https://github.com/"},
-	{"X", "https://x.com/"},
-	{"Telegram", "https://telegram.org/"},
-	{"Netflix", "https://www.netflix.com/"},
+	{"Google", "https://www.google.com/generate_204", http.StatusNoContent},
+	{"YouTube", "https://www.youtube.com/generate_204", http.StatusNoContent},
+	{"ChatGPT", "https://chatgpt.com/", http.StatusOK},
+	{"GitHub", "https://github.com/", http.StatusOK},
+	{"X", "https://x.com/", http.StatusOK},
+	{"Telegram", "https://telegram.org/", http.StatusOK},
+	{"Netflix", "https://www.netflix.com/", http.StatusOK},
+}
+
+func siteShortError(s string) string {
+	if s == "" {
+		return "不可达"
+	}
+	r := []rune(s)
+	if len(r) > 26 {
+		return string(r[:26]) + "…"
+	}
+	return s
 }
 
 func (a *App) testSites() {
@@ -64,8 +76,8 @@ func (a *App) testSites() {
 				if err == nil {
 					_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 32*1024))
 					resp.Body.Close()
-					if resp.StatusCode != http.StatusOK {
-						err = fmt.Errorf("HTTP %d", resp.StatusCode)
+					if resp.StatusCode != target.Status {
+						err = fmt.Errorf("HTTP %d，期望 %d", resp.StatusCode, target.Status)
 					}
 				}
 			}

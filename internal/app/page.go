@@ -175,7 +175,7 @@ func (a *App) pageOverview(c *ui.Context, p acrylic.Palette) {
 				a.testSites()
 			}
 		})
-		ui.Text(c, "经过当前 mixed 端口；只有 HTTP 200 才视为可达。").FontSize(11).TextColor(p.InkSubtle)
+		ui.Text(c, "经过当前 mixed 端口；generate_204 按 204 校验，其余站点仅 200 才算可达。").FontSize(11).TextColor(p.InkSubtle)
 		if len(results) == 0 {
 			ui.Text(c, "尚未测试。点击「一键测试」检查 Google、YouTube、ChatGPT、GitHub 等站点。").TextColor(p.InkMuted)
 			return
@@ -191,7 +191,8 @@ func (a *App) pageOverview(c *ui.Context, p acrylic.Palette) {
 					} else if r.OK {
 						ui.Textf(c, "%d ms", r.MS).FontSize(11).Bold().TextColor(p.Success)
 					} else {
-						ui.Text(c, "不可达").FontSize(11).TextColor(p.Danger)
+						msg := siteShortError(r.Err)
+						ui.Text(c, msg).FontSize(11).TextColor(p.Danger).SingleLine().Tooltip(r.Err)
 					}
 				})
 			}
