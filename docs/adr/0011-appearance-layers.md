@@ -17,9 +17,9 @@ Status: accepted
    合并窗格、滚动边缘。它只采样窗口内已绘制内容；**不声称**在 Linux/Win10 透桌面。
 3. **亚克力纪律**（Ground/Card/洗色/单一不透明度/禁用控件/guard/压力测试）平台无关地约束透明度与控件。
 4. **四个预设**：液态玻璃（默认，MyGo `plugins/glass` 窗口内玻璃）、透明（无材质，直接看穿）、
-   实色、Windows 亚克力（仅 Windows 11 22H2+ 的 DWM 系统材质）。不暴露模糊档位，避免「档位看不出变化」。
+   实色、Windows 亚克力（仅 Windows 11 22H2+ 的系统 Acrylic）。不暴露模糊档位，避免「档位看不出变化」。
 5. **唯一不透明度入口**是工作卡：作用于 `CardFill`；范围 0–100%，0% 完全透明。
-6. 设置页按平台显示能力：Windows 亚克力只在 `DWMWA_SYSTEMBACKDROP_TYPE` 可用的 build 上出现；
+6. 设置页按平台显示能力：Windows 亚克力只在 `SetWindowCompositionAttribute` Acrylic 可用的 build 上出现；
    其他平台不显示，已保存值回退到液态玻璃。液态玻璃与系统亚克力不混用、不互相映射。
 
 ## Considered Options
@@ -35,3 +35,4 @@ Status: accepted
 - 玻璃与系统材质同时出现时，玻璃只用于小面积浮层；大面积优先半透明卡，避免互相抢戏。
 - 性能降级明确：实色预设 / 无系统材质 / 减少透明度。
 - 任何「玻璃透桌面」的文案或承诺都是缺陷，验收时直接拒绝。
+
