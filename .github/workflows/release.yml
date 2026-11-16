@@ -62,7 +62,9 @@ jobs:
           else
             old=""
             if [[ -n "${BEFORE_SHA}" && "${BEFORE_SHA}" != "0000000000000000000000000000000000000000" ]]; then
-              old="$(git show "${BEFORE_SHA}:mygo.json" 2>/dev/null | jq -r '.version // empty')"
+              if git cat-file -e "${BEFORE_SHA}:mygo.json" 2>/dev/null; then
+                old="$(git show "${BEFORE_SHA}:mygo.json" | jq -r '.version // empty')"
+              fi
             fi
             if [[ "${old}" != "${version}" ]]; then
               if gh release view "${tag}" >/dev/null 2>&1; then
