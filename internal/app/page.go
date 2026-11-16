@@ -205,7 +205,7 @@ func (a *App) welcome(c *ui.Context, p acrylic.Palette, opacity float64) {
 		card.Children(func() {
 			ui.Icon(c, icons.Layers).FontSize(44).TextColor(p.Accent)
 			ui.Text(c, "欢迎使用 myclash").FontSize(26).Bold()
-			ui.Text(c, "一个原生、轻量的 mihomo 桌面客户端。三步开始：").TextColor(p.InkMuted)
+			ui.Text(c, "一个原生、跨平台的 mihomo 桌面客户端。三步开始：").TextColor(p.InkMuted)
 			for i, step := range []string{
 				"添加订阅或导入本地 mihomo YAML",
 				"选中配置，内核自动启动",

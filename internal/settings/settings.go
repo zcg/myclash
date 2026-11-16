@@ -54,13 +54,11 @@ type Hotkeys struct {
 }
 
 type App struct {
-	RunMode          string `yaml:"run_mode"`           // standard | lightweight
 	AutoStartProfile bool   `yaml:"auto_start_profile"` // start the last profile on launch
 	CloseToTray      bool   `yaml:"close_to_tray"`
 	OpenAtLogin      bool   `yaml:"open_at_login"`
 	Language         string `yaml:"language"` // auto | zh-CN | en
 	Notifications    bool   `yaml:"notifications"`
-	AgentTray        bool   `yaml:"agent_tray"`
 }
 
 type Core struct {
@@ -141,7 +139,6 @@ func Default() Settings {
 	return Settings{
 		Schema: Schema,
 		App: App{
-			RunMode:          "standard",
 			AutoStartProfile: true,
 			CloseToTray:      true,
 			Language:         "auto",
@@ -239,13 +236,10 @@ func (s *Store) load() error {
 	if err := yaml.Unmarshal(data, &v); err != nil {
 		return fmt.Errorf("settings: parse %s: %w", s.path, err)
 	}
-	migrated := v.App.RunMode != "standard" || v.App.AgentTray
 	v = normalize(v)
 	s.mu.Lock()
 	s.s = v
-	if migrated {
-		return s.saveLocked()
-	}
+	s.mu.Unlock()
 
 	return nil
 }
@@ -320,8 +314,6 @@ func normalize(v Settings) Settings {
 	if v.Schema == 0 {
 		v.Schema = Schema
 	}
-	v.App.RunMode = "standard"
-	v.App.AgentTray = false
 	if v.App.Language == "" {
 		v.App.Language = "auto"
 	}

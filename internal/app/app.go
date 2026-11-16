@@ -103,14 +103,7 @@ type App struct {
 	updateProgress   float64
 	autoStart        bool
 	notifications    bool
-	elevatedAgent    bool
-	agentTray        bool
 	openAtLogin      bool
-	attach           bool
-	agentPID         int
-	agentControl     string
-	agentToken       string
-	runModeIdx       int
 	closeTray        bool
 	forceQuit        bool
 	logFile          *os.File
@@ -282,10 +275,7 @@ func (a *App) ready() {
 	a.mixed = strconv.Itoa(s.Core.MixedPort)
 	a.controller = strconv.Itoa(s.Core.ControllerPort)
 	a.modeIdx = modeIndex(s.Core.Mode)
-	a.runModeIdx = 0
-	if s.App.RunMode == "lightweight" {
-		a.runModeIdx = 1
-	}
+
 	a.proxyModeIdx = 0
 	if s.Proxy.Mode == "pac" {
 		a.proxyModeIdx = 1
@@ -377,9 +367,9 @@ func (a *App) ready() {
 	a.autoStart = s.App.AutoStartProfile
 	a.closeTray = s.App.CloseToTray
 	a.openAtLogin = mygo.App.OpenAtLogin()
-	a.elevatedAgent = platform.AgentAtLogin()
+
 	a.notifications = s.App.Notifications
-	a.agentTray = s.App.AgentTray
+
 	acrylic.SetAppearance(s.UI.Theme)
 	a.dark = mygo.Theme.IsDark()
 	mygo.Theme.OnUpdated(func() {
@@ -475,9 +465,6 @@ func (a *App) view(c *ui.Context) {
 			}
 			if platform.IsElevated() {
 				acrylic.Chip(c, p, "管理员", p.Success)
-			}
-			if a.attach {
-				acrylic.Chip(c, p, "Agent", p.Accent)
 			}
 		})
 
@@ -630,10 +617,6 @@ func (a *App) options() config.Options {
 }
 
 func (a *App) startCore() {
-	if a.attach {
-		a.setError(errors.New("当前由轻量 Agent 托管"))
-		return
-	}
 	if a.profiles.Selected() == "" {
 		a.setError(errors.New("先添加并启用一个配置"))
 		return
@@ -865,14 +848,6 @@ func (a *App) stopCore() {
 }
 
 func (a *App) restartCore() {
-	if a.attach {
-		if err := a.agentRequest("/restart"); err != nil {
-			a.setError(err)
-			return
-		}
-		a.setStatus("Agent 内核已重载")
-		return
-	}
 	// Use the same path as stop, so status, streams, connections and the
 	// state snapshot are all cleared before the new core starts.
 	a.stopCore()
@@ -1428,23 +1403,6 @@ func (a *App) tunActive() bool {
 }
 
 func (a *App) toggleTUN() {
-	if a.attach {
-		enable := a.tunEnable
-		path := "/tun?enabled=0"
-		if enable {
-			path = "/tun?enabled=1"
-		}
-		if err := a.agentRequest(path); err != nil {
-			a.setError(err)
-			a.tunEnable = !enable
-			a.invalidate()
-			return
-		}
-		a.saveTUN()
-		a.setStatus("Agent TUN 已更新")
-		a.invalidate()
-		return
-	}
 	a.saveTUN()
 	if !a.tunEnable {
 		if a.state.View().Started {
