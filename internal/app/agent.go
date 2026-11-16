@@ -390,17 +390,23 @@ func (a *App) switchToAgent() {
 		args = "--agent"
 	}
 	_ = os.Remove(agentPath())
-	cmd := exec.Command(exe, args)
-	if err := cmd.Start(); err != nil {
-		a.forceQuit = false
-		a.mu.Lock()
-		a.busy = false
-		a.mu.Unlock()
-		a.startCore()
-		a.setError(err)
+	s := a.settings.Get()
+	elevated := s.TUN.Enable && !platform.IsElevated()
+	var startErr error
+	if elevated {
+		startErr = platform.StartElevated(exe, args)
+	} else {
+		cmd := exec.Command(exe, args)
+		startErr = cmd.Start()
+		if startErr == nil {
+			_ = cmd.Process.Release()
+		}
+	}
+	if startErr != nil {
+		a.restoreAfterAgentFailure()
+		a.setError(startErr)
 		return
 	}
-	_ = cmd.Process.Release()
 	go func() {
 		for i := 0; i < 50; i++ {
 			if agentAlive() {
@@ -409,16 +415,22 @@ func (a *App) switchToAgent() {
 			time.Sleep(100 * time.Millisecond)
 		}
 		if !agentAlive() {
-			a.forceQuit = false
-			a.mu.Lock()
-			a.busy = false
-			a.mu.Unlock()
-			a.startCore()
+			a.restoreAfterAgentFailure()
 			a.setError(errors.New("轻量内核启动失败，已恢复本地内核"))
 			return
 		}
 		os.Exit(0)
 	}()
+}
+
+func (a *App) restoreAfterAgentFailure() {
+	a.forceQuit = false
+	a.tunEnable = false
+	_ = a.settings.Update(func(s *settings.Settings) { s.TUN.Enable = false })
+	a.mu.Lock()
+	a.busy = false
+	a.mu.Unlock()
+	a.startCore()
 }
 
 func (a *App) agentRequest(path string) error {
