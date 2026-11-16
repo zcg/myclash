@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"sync"
 	"syscall"
 
@@ -49,6 +50,7 @@ func runCore() error {
 		return err
 	}
 	if err := a.start(); err != nil {
+		_ = os.WriteFile(filepath.Join(dir, "core-start.log"), []byte(err.Error()), 0o600)
 		return err
 	}
 	ch := make(chan os.Signal, 1)

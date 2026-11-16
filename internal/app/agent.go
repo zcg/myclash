@@ -381,33 +381,44 @@ func (a *App) switchToAgent() {
 	}
 	exe, err := os.Executable()
 	if err != nil {
+		a.forceQuit = false
 		a.setError(err)
 		return
 	}
 	args := "--core"
-	_ = os.Remove(agentPath())
 	if a.agentTray {
 		args = "--agent"
 	}
+	_ = os.Remove(agentPath())
 	cmd := exec.Command(exe, args)
 	if err := cmd.Start(); err != nil {
+		a.forceQuit = false
+		a.mu.Lock()
+		a.busy = false
+		a.mu.Unlock()
+		a.startCore()
 		a.setError(err)
 		return
 	}
 	_ = cmd.Process.Release()
-	for i := 0; i < 50; i++ {
-		if agentAlive() {
-			break
+	go func() {
+		for i := 0; i < 50; i++ {
+			if agentAlive() {
+				break
+			}
+			time.Sleep(100 * time.Millisecond)
 		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	if !agentAlive() {
-		a.forceQuit = false
-		a.startCore()
-		a.setError(errors.New("轻量内核启动失败，已恢复本地内核"))
-		return
-	}
-	os.Exit(0)
+		if !agentAlive() {
+			a.forceQuit = false
+			a.mu.Lock()
+			a.busy = false
+			a.mu.Unlock()
+			a.startCore()
+			a.setError(errors.New("轻量内核启动失败，已恢复本地内核"))
+			return
+		}
+		os.Exit(0)
+	}()
 }
 
 func (a *App) agentRequest(path string) error {
