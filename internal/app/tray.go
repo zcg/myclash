@@ -26,6 +26,16 @@ func (a *App) setupTray() {
 		return
 	}
 	a.tray = tray
+	a.tray.OnClick(a.showMainWindow)
+}
+
+func (a *App) showMainWindow() {
+	if a.win == nil {
+		return
+	}
+	a.win.Show()
+	a.win.Restore()
+	a.win.Focus()
 }
 
 func (a *App) refreshTrayMenu() {
@@ -51,9 +61,7 @@ func (a *App) trayMenu() *mygo.Menu {
 	}
 	return mygo.NewMenu([]*mygo.MenuItem{
 		{Label: "显示窗口", Click: func(*mygo.MenuItem, *mygo.Window) {
-			if a.win != nil {
-				a.win.Show()
-			}
+			a.showMainWindow()
 		}},
 		{Label: "悬浮窗", Click: func(*mygo.MenuItem, *mygo.Window) {
 			a.toggleFloating()
