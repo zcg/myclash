@@ -379,6 +379,7 @@ func (a *App) switchToAgent() {
 	if a.host != nil {
 		a.stopCore()
 	}
+	platform.KillOtherCores()
 	exe, err := os.Executable()
 	if err != nil {
 		a.forceQuit = false

@@ -29,6 +29,7 @@ type coreRunner struct {
 	dataDir  string
 	control  *http.Server
 	token    string
+	release  func()
 }
 
 func userDataDir() (string, error) {
@@ -72,6 +73,11 @@ func (a *coreRunner) options(s settings.Settings) config.Options {
 }
 
 func (a *coreRunner) start() error {
+	release, err := platform.AcquireCoreLock()
+	if err != nil {
+		return err
+	}
+	a.release = release
 	s := a.settings.Get()
 	if s.TUN.Enable && !platform.IsElevated() {
 		return errors.New("core: TUN needs administrator")
@@ -191,6 +197,10 @@ func (a *coreRunner) startControl() (string, string, error) {
 }
 
 func (a *coreRunner) stop() {
+	if a.release != nil {
+		a.release()
+		a.release = nil
+	}
 	if a.host != nil {
 		_ = a.host.Stop(context.Background())
 		a.host = nil
