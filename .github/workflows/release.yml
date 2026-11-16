@@ -195,5 +195,6 @@ jobs:
             release/**/*.rpm
             release/**/*.pkg.tar.zst
             release/**/PKGBUILD*
+            release/**/update-*.json
             release/**/SHA256SUMS-*
             release/**/install*.ps1
