@@ -385,6 +385,7 @@ func (a *App) switchToAgent() {
 		return
 	}
 	args := "--core"
+	_ = os.Remove(agentPath())
 	if a.agentTray {
 		args = "--agent"
 	}
@@ -394,10 +395,19 @@ func (a *App) switchToAgent() {
 		return
 	}
 	_ = cmd.Process.Release()
-	go func() {
-		time.Sleep(200 * time.Millisecond)
-		os.Exit(0)
-	}()
+	for i := 0; i < 50; i++ {
+		if agentAlive() {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	if !agentAlive() {
+		a.forceQuit = false
+		a.startCore()
+		a.setError(errors.New("轻量内核启动失败，已恢复本地内核"))
+		return
+	}
+	os.Exit(0)
 }
 
 func (a *App) agentRequest(path string) error {

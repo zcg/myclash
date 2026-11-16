@@ -1,7 +1,7 @@
 {
   "name": "myclash",
   "identifier": "com.example.myclash",
-  "version": "0.10.2",
+  "version": "0.10.3",
   "out": "build",
   "windows": {
     "installerInclude": "packaging/myclash.nsh"
@@ -11,6 +11,7 @@
     "github": "zcg/myclash"
   }
 }
+
 
 
 
