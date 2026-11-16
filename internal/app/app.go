@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/plugins/glass"
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
 
@@ -446,6 +447,10 @@ func (a *App) view(c *ui.Context) {
 	s := a.settings.Get()
 	if s.UI.Preset == "solid" {
 		acrylic.Ground(c, p)
+	} else if s.UI.Preset == "glass" && !c.Vibrancy() {
+		// Platform without a system material: use the in-app glass shader,
+		// otherwise this preset would collapse to a flat transparent window.
+		c.Root().Material(glass.Glass{Style: glass.Regular})
 	} else {
 		c.Root().Background(ui.Transparent)
 	}
