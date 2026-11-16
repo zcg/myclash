@@ -64,7 +64,7 @@ func (a *App) testSites() {
 				if err == nil {
 					_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 32*1024))
 					resp.Body.Close()
-					if resp.StatusCode >= 500 {
+					if resp.StatusCode != http.StatusOK {
 						err = fmt.Errorf("HTTP %d", resp.StatusCode)
 					}
 				}

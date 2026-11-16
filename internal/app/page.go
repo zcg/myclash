@@ -161,17 +161,6 @@ func (a *App) pageOverview(c *ui.Context, p acrylic.Palette) {
 		})
 	})
 
-	if hist := a.trafficSeries(120, true); len(hist) > 1 {
-		history := a.panel(c, p, opacity).Padding(a.cardPad())
-		history.Children(func() {
-			ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
-				ui.Text(c, "流量历史").Bold()
-				ui.Text(c, "最近 1 小时采样，每 30 秒一点").FontSize(11).TextColor(p.InkSubtle)
-			})
-			widgets.Sparkline(c, p.Accent.Alpha(0.8), hist, 48)
-		})
-	}
-
 	connectivity := a.panel(c, p, opacity).Padding(a.cardPad())
 	connectivity.Children(func() {
 		results, testing := a.siteSnapshot()
@@ -187,7 +176,7 @@ func (a *App) pageOverview(c *ui.Context, p acrylic.Palette) {
 				a.testSites()
 			}
 		})
-		ui.Text(c, "经过当前 mixed 端口；HTTP 状态码低于 500 视为可达。").FontSize(11).TextColor(p.InkSubtle)
+		ui.Text(c, "经过当前 mixed 端口；只有 HTTP 200 才视为可达。").FontSize(11).TextColor(p.InkSubtle)
 		if len(results) == 0 {
 			ui.Text(c, "尚未测试。点击「一键测试」检查 Google、YouTube、ChatGPT、GitHub 等站点。").TextColor(p.InkMuted)
 			return
@@ -452,15 +441,11 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 	case "appearance":
 		ui.Text(c, i18n.T("外观", "Appearance")).FontSize(15).Bold()
 		ui.Text(c, "材质").FontSize(11).TextColor(p.InkSubtle)
-		labels := []string{"液态玻璃", "透明", "实色"}
-		if platform.AcrylicSupported() {
-			labels = append(labels, "Windows 亚克力")
-		}
-		seg := acrylic.SegmentedText(c, p, &a.presetIdx, labels...)
+		seg := acrylic.SegmentedText(c, p, &a.presetIdx, "液态玻璃", "透明", "实色")
 		if seg.Changed() {
 			a.applyAppearance()
 		}
-		ui.Text(c, "液态玻璃是应用内玻璃材质；Windows 亚克力是 Windows 11 22H2+ 的 DWM 系统材质，只在受支持的 Windows 上出现。").
+		ui.Text(c, "液态玻璃模糊窗后内容；透明直接显示桌面；实色关闭透明，适合远程桌面。").
 			FontSize(11).TextColor(p.InkSubtle)
 		if acrylic.Checkbox(c, p, &a.monochromeIcons, "侧栏图标使用单色").Changed() {
 			if err := a.settings.Update(func(s *settings.Settings) { s.UI.MonochromeIcons = a.monochromeIcons }); err != nil {
@@ -468,7 +453,7 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 			}
 			a.invalidate()
 		}
-		if preset := presets[clampIdx(a.presetIdx, len(presets))]; preset != "solid" {
+		if presets[clampIdx(a.presetIdx, len(presets))] != "solid" {
 			changed := false
 			ui.Row(c).Gap(12).AlignItems(ui.Center).Children(func() {
 				ui.Text(c, "面板不透明度").FontSize(11).TextColor(p.InkSubtle).Width(120)
@@ -479,28 +464,6 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 			})
 			if changed {
 				a.applyAppearance()
-			}
-			if preset == "glass" {
-				ui.Row(c).Gap(12).AlignItems(ui.Center).Children(func() {
-					ui.Text(c, "玻璃清晰度").FontSize(11).TextColor(p.InkSubtle).Width(120)
-					if ui.Slider(c, &a.glassClarity, 0, 1).Width(260).Changed() {
-						a.applyAppearance()
-					}
-					ui.Textf(c, "%.0f%%", a.glassClarity*100).FontSize(11).TextColor(p.InkMuted).Width(48)
-				})
-				ui.Text(c, "清晰度越高越透，越低越霜；这是窗口内玻璃插件的参数，不是系统模糊强度。").
-					FontSize(11).TextColor(p.InkSubtle)
-			}
-			if preset == "acrylic" {
-				ui.Row(c).Gap(12).AlignItems(ui.Center).Children(func() {
-					ui.Text(c, "亚克力浓度").FontSize(11).TextColor(p.InkSubtle).Width(120)
-					if ui.Slider(c, &a.acrylicOpacity, 0, 1).Width(260).Changed() {
-						a.applyAppearance()
-					}
-					ui.Textf(c, "%.0f%%", a.acrylicOpacity*100).FontSize(11).TextColor(p.InkMuted).Width(48)
-				})
-				ui.Text(c, "这是 Windows 旧版 Acrylic 的 GradientColor alpha；DWM 系统模糊本身不可单独调。").
-					FontSize(11).TextColor(p.InkSubtle)
 			}
 		}
 		ui.Text(c, "主题").FontSize(11).TextColor(p.InkSubtle)
@@ -775,7 +738,7 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 		}
 		ui.Text(c, "对同一域名同时尝试多个 IP，通常更快，但会增加连接数。").FontSize(11).TextColor(p.InkSubtle)
 		ui.Text(c, "find-process-mode（进程归属）").FontSize(11).TextColor(p.InkSubtle)
-		ui.Text(c, "Off 最省 CPU；Strict 只查询需要的连接；Always 每个连接都查询，连接很多时开销更高。").FontSize(11).TextColor(p.InkSubtle)
+		ui.Text(c, "Off 最省 CPU；Strict 只查询规则需要的连接；Always 每个连接都查询。TUN 开启时会强制 Always，否则进程列无法归属。").FontSize(11).TextColor(p.InkSubtle)
 		fp := acrylic.SegmentedText(c, p, &a.findProcessIdx, "Off", "Strict", "Always")
 		if fp.Changed() {
 			changed = true

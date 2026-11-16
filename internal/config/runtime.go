@@ -121,6 +121,10 @@ func inject(doc map[string]any, opts Options) {
 	doc["unified-delay"] = opts.Advanced.UnifiedDelay
 	doc["tcp-concurrent"] = opts.Advanced.TCPConcurrent
 	doc["find-process-mode"] = opts.Advanced.FindProcessMode
+	if opts.TUN.Enable {
+		// TUN/utun flows cannot be attributed without an explicit process lookup.
+		doc["find-process-mode"] = "always"
+	}
 	if opts.Advanced.Fingerprint != "" {
 		doc["global-client-fingerprint"] = opts.Advanced.Fingerprint
 	}

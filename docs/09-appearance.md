@@ -17,21 +17,21 @@
 - 悬浮窗是 Card 的特例：整窗一张卡，仍然只有一层可调透明度。
 - 代码、diff、日志、连接/规则表放在 `Code` 画布；设置块与对话框放在 `Popover`/`Modal` 面。
 
-## 2. 四种外观预设
+## 2. 三种外观预设
 
 | 预设 | 窗口底 | 工作卡 | 适用 |
 | --- | --- | --- | --- |
-| **液态玻璃（默认）** | MyGo `plugins/glass` 的窗口内 Liquid Glass（三端同一 shader） | 半透明色（0–100%） | 毛玻璃、折射与边缘高光；与系统亚克力无关 |
+| **液态玻璃（默认）** | 系统材质（macOS 26 Liquid Glass；Windows 11 Acrylic；其他平台无） | 半透明色（0–100%） | 明显毛玻璃；GPU 开销最高 |
 | **透明** | 不铺底、不挂系统材质，直接显示桌面 | 半透明色（0–100%） | 想看穿窗口；0% 时只剩文字 |
 | **实色** | `Ground` 实铺 | 实色 | 远程桌面、低端机、提高对比度 |
-| **Windows 亚克力** | Windows 11 22H2+ 的 Acrylic（`SetWindowCompositionAttribute` 的 ACCENT_ENABLE_ACRYLICBLURBEHIND） | 半透明色（0–100%） | 仅 Windows 11 22H2+ 显示；Windows 10/macOS/Linux 不出现 |
 
-- 液态玻璃与 Windows 亚克力不是同一个东西：前者是 MyGo 插件的窗口内玻璃，三端一致；后者是 Windows 系统 Acrylic，只在满足版本条件的 Windows 上启用。
-- 液态玻璃的窗口底用 `glass.Glass{Style: glass.Regular}`；不挂系统 `Vibrancy`，避免在 Windows 上被 DWM 混成亚克力。
-- Windows 亚克力仅在 `platform.AcrylicSupported()`（build >= 22621）时显示；否则设置页隐藏该选项，已保存的值自动回退到液态玻璃。
+- 三种预设只组合开关，不改页面结构。
+- 液态玻璃的窗口底用 `VibrancyGlass`：macOS 26 是系统 Liquid Glass，Windows 11 映射为 Acrylic；
+  卡片和设置块用 `glass.Glass`，在窗口内做磨砂、边缘高光与折射。
 - 透明预设不挂 `Vibrancy`，窗口根节点也不铺 `Ground`；工作卡不透明度为 0% 时窗口完全透明。
-- 用户不透明度只有一个滑杆：0–100%，默认 30%。
-- 不设模糊档位：固定使用各材质的最强档，避免「档位看起来没变化」。
+- 用户不透明度只有一个滑杆：0–100%，默认 80%。0% 是真正全透明，100% 是实色；
+  玻璃预设下卡片是半透明色，坐在系统材质上。
+- 不设模糊档位：液态玻璃固定使用系统最强档，避免「档位看起来没变化」。
 
 ## 3. 平台能力矩阵
 
@@ -159,5 +159,3 @@ ui.Box(c).Absolute().Top(0).Left(0).Right(0).Height(74).PassThrough().
 - 不做每控件独立透明度。
 - 不给长文本/数据表铺玻璃。
 - 不做自定义着色器或背景图（M3 后再议）。
-
-

@@ -75,8 +75,6 @@ type UI struct {
 	Preset          string  `yaml:"preset"` // glass | clear | solid
 	Blur            string  `yaml:"blur"`   // derived: glass=deep, others=none
 	CardOpacity     float64 `yaml:"card_opacity"`
-	GlassClarity    float64 `yaml:"glass_clarity"`
-	AcrylicOpacity  float64 `yaml:"acrylic_opacity"`
 	Theme           string  `yaml:"theme"` // system | light | dark
 	Density         string  `yaml:"density"`
 	MonochromeIcons bool    `yaml:"monochrome_icons"`
@@ -155,14 +153,12 @@ func Default() Settings {
 			LogLevel:       "info",
 		},
 		UI: UI{
-			Preset:         "glass",
-			Blur:           "deep",
-			CardOpacity:    0.3,
-			GlassClarity:   0.45,
-			AcrylicOpacity: 0.7,
-			Theme:          "system",
-			Density:        "comfortable",
-			Scale:          1.25,
+			Preset:      "glass",
+			Blur:        "deep",
+			CardOpacity: 0.3,
+			Theme:       "system",
+			Density:     "comfortable",
+			Scale:       1.25,
 		},
 		Proxy: Proxy{
 			Mode:   "manual",
@@ -344,22 +340,16 @@ func normalize(v Settings) Settings {
 	default:
 		v.TUN.Stack = DefaultTUNStack
 	}
-	if v.UI.Preset != "clear" && v.UI.Preset != "solid" && v.UI.Preset != "acrylic" {
+	if v.UI.Preset != "clear" && v.UI.Preset != "solid" {
 		v.UI.Preset = "glass"
 	}
-	if v.UI.Preset == "glass" || v.UI.Preset == "acrylic" {
+	if v.UI.Preset == "glass" {
 		v.UI.Blur = "deep"
 	} else {
 		v.UI.Blur = "none"
 	}
 	if v.UI.CardOpacity < 0 || v.UI.CardOpacity > 1 {
 		v.UI.CardOpacity = 0.8
-	}
-	if v.UI.GlassClarity < 0 || v.UI.GlassClarity > 1 {
-		v.UI.GlassClarity = 0.45
-	}
-	if v.UI.AcrylicOpacity < 0 || v.UI.AcrylicOpacity > 1 {
-		v.UI.AcrylicOpacity = 0.7
 	}
 	if v.UI.Theme != "light" && v.UI.Theme != "dark" {
 		v.UI.Theme = "system"
