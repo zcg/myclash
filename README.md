@@ -45,7 +45,7 @@ Rust/Tauri 进程。
 
 欢迎提交 Issue 和 PR。只要你愿意修，作者很乐意合并。
 
-![myclash 外观设置](./docs/screenshots/overview.jpg)
+![myclash 概览](./docs/screenshots/overview.jpg)
 
 ## 功能
 
