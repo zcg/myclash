@@ -3,6 +3,7 @@ package app
 import (
 	"errors"
 	"fmt"
+	"os"
 	"runtime"
 	"sort"
 	"strconv"
@@ -592,6 +593,13 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 			FontSize(11).TextColor(p.InkSubtle)
 		ui.Text(c, "启动时自动启用：打开应用后直接启动上次选中的 Profile；关闭时保留在托盘：点关闭不退出进程。").
 			FontSize(11).TextColor(p.InkSubtle)
+		if acrylic.Checkbox(c, p, &a.agentTray, "轻量模式保留托盘（约多 50MB，换取随时拉起窗口）").Changed() {
+			if err := a.settings.Update(func(s *settings.Settings) { s.App.AgentTray = a.agentTray }); err != nil {
+				a.setError(err)
+			}
+		}
+		ui.Text(c, "关闭托盘后，轻量模式只保留裸内核；再次启动应用会 attach，设置→关于可退出内核。").
+			FontSize(11).TextColor(p.InkSubtle)
 		ui.Text(c, "语言").FontSize(11).TextColor(p.InkSubtle)
 		if seg := acrylic.SegmentedText(c, p, &a.languageIdx, "跟随系统", "简体中文", "English"); seg.Changed() {
 			lang := "auto"
@@ -723,6 +731,12 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 		ui.Text(c, "GPL-3.0 · 源码与问题反馈见仓库").FontSize(11).TextColor(p.InkSubtle)
 		if acrylic.Button(c, p, "退出 myclash", false).Clicked() {
 			a.quitApp()
+			if a.attach {
+				if acrylic.Button(c, p, "退出轻量内核 Agent", false).Clicked() {
+					_ = a.agentRequest("/quit")
+					os.Exit(0)
+				}
+			}
 		}
 
 	case "advanced":

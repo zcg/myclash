@@ -104,6 +104,7 @@ type App struct {
 	autoStart        bool
 	notifications    bool
 	elevatedAgent    bool
+	agentTray        bool
 	openAtLogin      bool
 	attach           bool
 	agentPID         int
@@ -388,6 +389,7 @@ func (a *App) ready() {
 	a.openAtLogin = mygo.App.OpenAtLogin()
 	a.elevatedAgent = platform.AgentAtLogin()
 	a.notifications = s.App.Notifications
+	a.agentTray = s.App.AgentTray
 	acrylic.SetAppearance(s.UI.Theme)
 	a.dark = mygo.Theme.IsDark()
 	mygo.Theme.OnUpdated(func() {

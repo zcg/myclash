@@ -384,7 +384,11 @@ func (a *App) switchToAgent() {
 		a.setError(err)
 		return
 	}
-	cmd := exec.Command(exe, "--agent")
+	args := "--core"
+	if a.agentTray {
+		args = "--agent"
+	}
+	cmd := exec.Command(exe, args)
 	if err := cmd.Start(); err != nil {
 		a.setError(err)
 		return

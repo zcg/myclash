@@ -60,6 +60,7 @@ type App struct {
 	OpenAtLogin      bool   `yaml:"open_at_login"`
 	Language         string `yaml:"language"` // auto | zh-CN | en
 	Notifications    bool   `yaml:"notifications"`
+	AgentTray        bool   `yaml:"agent_tray"`
 }
 
 type Core struct {
