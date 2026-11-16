@@ -239,10 +239,14 @@ func (s *Store) load() error {
 	if err := yaml.Unmarshal(data, &v); err != nil {
 		return fmt.Errorf("settings: parse %s: %w", s.path, err)
 	}
+	migrated := v.App.RunMode != "standard" || v.App.AgentTray
 	v = normalize(v)
 	s.mu.Lock()
 	s.s = v
-	s.mu.Unlock()
+	if migrated {
+		return s.saveLocked()
+	}
+
 	return nil
 }
 
