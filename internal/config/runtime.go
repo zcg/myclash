@@ -191,6 +191,12 @@ func inject(doc map[string]any, opts Options) {
 			doc["dns"] = dns
 		}
 		dns["enable"] = true
+		// Bound the DNS cache to a sane default (mihomo's is 4096). Users who
+		// explicitly set cache-max-size keep their value. 1024 covers normal
+		// browsing while avoiding several large LRU maps on long sessions.
+		if _, ok := dns["cache-max-size"]; !ok {
+			dns["cache-max-size"] = 1024
+		}
 		if opts.DNS.Listen != "" {
 			dns["listen"] = opts.DNS.Listen
 		}

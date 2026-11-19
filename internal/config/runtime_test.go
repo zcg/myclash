@@ -123,10 +123,30 @@ func TestRuntimeDNSInjection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"enhanced-mode: fake-ip", "fake-ip-range: 198.18.0.1/16", "223.5.5.5"} {
+	for _, want := range []string{"enhanced-mode: fake-ip", "fake-ip-range: 198.18.0.1/16", "223.5.5.5", "cache-max-size: 1024"} {
 		if !strings.Contains(string(raw), want) {
 			t.Fatalf("runtime missing %q:\n%s", want, raw)
 		}
+	}
+}
+
+func TestRuntimeKeepsExplicitDNSCacheSize(t *testing.T) {
+	st, err := NewStore(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.AddLocal("demo", []byte("dns:\n  cache-max-size: 8192\nproxies: []\nrules:\n  - MATCH,DIRECT\n")); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := st.Runtime(Options{
+		MixedPort: 7890, Mode: "rule", LogLevel: "info",
+		DNS: DNSOptions{Enable: true, EnhancedMode: "fake-ip", FakeIPRange: "198.18.0.1/16"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), "cache-max-size: 8192") {
+		t.Fatalf("explicit cache size was overwritten:\n%s", raw)
 	}
 }
 

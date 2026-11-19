@@ -42,8 +42,9 @@ func (a *App) webdavEndpoint() (string, error) {
 	return u.String(), nil
 }
 
-func (a *App) webdavClient() *http.Client {
-	return &http.Client{Timeout: 45 * time.Second, Transport: &http.Transport{Proxy: nil}}
+func (a *App) webdavClient() (*http.Client, *http.Transport) {
+	tr := &http.Transport{Proxy: nil}
+	return &http.Client{Timeout: 45 * time.Second, Transport: tr}, tr
 }
 
 func (a *App) uploadWebDAV() {
@@ -78,7 +79,9 @@ func (a *App) uploadWebDAV() {
 	if a.webdavUser != "" {
 		req.SetBasicAuth(a.webdavUser, a.webdavPass)
 	}
-	resp, err := a.webdavClient().Do(req)
+	client, tr := a.webdavClient()
+	defer tr.CloseIdleConnections()
+	resp, err := client.Do(req)
 	if err != nil {
 		a.setError(fmt.Errorf("WebDAV 上传失败: %w", err))
 		return
@@ -105,7 +108,9 @@ func (a *App) downloadWebDAV() {
 	if a.webdavUser != "" {
 		req.SetBasicAuth(a.webdavUser, a.webdavPass)
 	}
-	resp, err := a.webdavClient().Do(req)
+	client, tr := a.webdavClient()
+	defer tr.CloseIdleConnections()
+	resp, err := client.Do(req)
 	if err != nil {
 		a.setError(fmt.Errorf("WebDAV 下载失败: %w", err))
 		return

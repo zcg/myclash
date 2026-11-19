@@ -15,24 +15,37 @@ func Sparkline(c *ui.Context, color ui.Color, values []float64, height float32) 
 // SparklineFunc draws a line from a value accessor. Callers with their own
 // sample structs avoid converting a slice to []float64 on every frame.
 func SparklineFunc(c *ui.Context, color ui.Color, n int, valueAt func(int) float64, height float32) ui.Element {
+	// Scratch buffers live with this element: StrokePolyline copies what it
+	// needs before returning, so reusing them each frame avoids allocating a
+	// fresh point slice (up to ~80KB on the traffic page) on every repaint.
+	var values []float64
+	var pts [][2]float32
 	return ui.Box(c).FillWidth().Height(height).Draw(func(p *ui.Painter, r ui.Rect) {
 		if n < 2 {
 			p.Fill(ui.Rect{X: r.X, Y: r.Y + r.H - 1, W: r.W, H: 1}, color.Alpha(0.25), 0)
 			return
 		}
+		if cap(values) < n {
+			values = make([]float64, n)
+			pts = make([][2]float32, n)
+		} else {
+			values = values[:n]
+			pts = pts[:n]
+		}
 		maxV := 0.0
 		for i := 0; i < n; i++ {
-			if v := valueAt(i); v > maxV {
+			v := valueAt(i)
+			values[i] = v
+			if v > maxV {
 				maxV = v
 			}
 		}
 		if maxV <= 0 {
 			maxV = 1
 		}
-		pts := make([][2]float32, n)
 		for i := 0; i < n; i++ {
 			x := r.X + r.W*float32(i)/float32(n-1)
-			y := r.Y + r.H - float32(valueAt(i)/maxV)*r.H
+			y := r.Y + r.H - float32(values[i]/maxV)*r.H
 			pts[i] = [2]float32{x, y}
 		}
 		p.StrokePolyline(pts, 1.5, color)

@@ -31,6 +31,16 @@ func NewClient(ep Endpoint) *Client {
 	}
 }
 
+// Close releases the client's connection pools. Call it when the core stops
+// so a restart does not briefly keep the old transports' connections alive.
+func (c *Client) Close() {
+	if c == nil {
+		return
+	}
+	c.hc.CloseIdleConnections()
+	c.sc.CloseIdleConnections()
+}
+
 func (c *Client) Version(ctx context.Context) (Version, error) {
 	var v Version
 	err := c.do(ctx, http.MethodGet, "/version", nil, &v)

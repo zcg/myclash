@@ -159,9 +159,11 @@ func (s *Store) AddSubscription(ctx context.Context, name, rawURL string) (Profi
 		return Profile{}, err
 	}
 	req.Header.Set("User-Agent", "clash-verge/v2.4.2")
+	tr := &http.Transport{Proxy: nil}
+	defer tr.CloseIdleConnections()
 	hc := &http.Client{
 		Timeout:   30 * time.Second,
-		Transport: &http.Transport{Proxy: nil},
+		Transport: tr,
 	}
 	resp, err := hc.Do(req)
 	if err != nil {
@@ -339,7 +341,9 @@ func fetchSubscription(ctx context.Context, rawURL string) ([]byte, *Userinfo, e
 		return nil, nil, err
 	}
 	req.Header.Set("User-Agent", "clash-verge/v2.4.2")
-	hc := &http.Client{Timeout: 30 * time.Second, Transport: &http.Transport{Proxy: nil}}
+	tr := &http.Transport{Proxy: nil}
+	defer tr.CloseIdleConnections()
+	hc := &http.Client{Timeout: 30 * time.Second, Transport: tr}
 	resp, err := hc.Do(req)
 	if err != nil {
 		return nil, nil, fmt.Errorf("config: download: %w", err)

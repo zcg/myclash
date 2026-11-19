@@ -74,6 +74,7 @@ type App struct {
 
 	ctx              context.Context
 	cancel           context.CancelFunc
+	rootCancel       context.CancelFunc
 	autoUpdateCancel context.CancelFunc
 
 	mu     sync.Mutex
@@ -143,6 +144,7 @@ type App struct {
 	floating          *mygo.Window
 	trafficPath       string
 	trafficHistory    []trafficPoint
+	trafficView       []trafficPoint // reused read-only snapshot for the traffic page
 	lastTrafficSave   time.Time
 	lastTrafficFlush  time.Time
 	trafficPending    []trafficPoint
@@ -269,11 +271,13 @@ func Run() error {
 	if !mygo.App.RequestSingleInstanceLock() {
 		return nil
 	}
+	rootCtx, rootCancel := context.WithCancel(context.Background())
 	a := &App{
-		state:  core.NewState(),
-		router: ui.NewRouter("/overview"),
-		side:   "overview",
-		ctx:    context.Background(),
+		state:      core.NewState(),
+		router:     ui.NewRouter("/overview"),
+		side:       "overview",
+		ctx:        rootCtx,
+		rootCancel: rootCancel,
 	}
 	a.cancel = func() {}
 	a.activePage.Store("overview")
@@ -498,6 +502,9 @@ func (a *App) fatal(err error) {
 // once: normal quits call it from OnQuit, while forced exits call it before
 // terminating the process.
 func (a *App) finishShutdown() {
+	if a.rootCancel != nil {
+		a.rootCancel()
+	}
 	if a.autoUpdateCancel != nil {
 		a.autoUpdateCancel()
 		a.autoUpdateCancel = nil
@@ -519,9 +526,11 @@ func (a *App) prepareRestart() {
 	a.cancel()
 	a.mu.Lock()
 	host := a.host
+	client := a.client
 	a.host = nil
 	a.client = nil
 	a.mu.Unlock()
+	client.Close()
 	if host != nil {
 		_ = host.Stop(context.Background())
 	}
@@ -981,12 +990,14 @@ func (a *App) stopCore() {
 	a.mu.Lock()
 	host := a.host
 	cancel := a.cancel
+	client := a.client
 	a.host = nil
 	a.client = nil
 	a.busy = true
 	a.status = "正在停止内核…"
 	a.mu.Unlock()
 	cancel()
+	client.Close()
 	if host != nil {
 		_ = host.Stop(context.Background())
 	}

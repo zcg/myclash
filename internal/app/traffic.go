@@ -94,10 +94,26 @@ func (a *App) flushTrafficLocked() {
 	a.lastTrafficFlush = time.Now()
 }
 
+// trafficHistorySnapshot returns a read-only view of the samples. The
+// backing array is reused across repaints, so the traffic page does not
+// allocate ~576KB on every frame; it only grows when the history grows.
 func (a *App) trafficHistorySnapshot() []trafficPoint {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	out := make([]trafficPoint, len(a.trafficHistory))
-	copy(out, a.trafficHistory)
-	return out
+	n := len(a.trafficHistory)
+	if cap(a.trafficView) < n {
+		// Grow geometrically so the common case (one new sample per minute)
+		// reuses the buffer instead of reallocating on every frame.
+		capHint := n
+		if capHint < 256 {
+			capHint = 256
+		} else if capHint < 2*cap(a.trafficView) {
+			capHint = 2 * cap(a.trafficView)
+		}
+		a.trafficView = make([]trafficPoint, n, capHint)
+	} else {
+		a.trafficView = a.trafficView[:n]
+	}
+	copy(a.trafficView, a.trafficHistory)
+	return a.trafficView
 }
