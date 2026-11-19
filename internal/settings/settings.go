@@ -59,6 +59,11 @@ type App struct {
 	OpenAtLogin      bool   `yaml:"open_at_login"`
 	Language         string `yaml:"language"` // auto | zh-CN | en
 	Notifications    bool   `yaml:"notifications"`
+	// AutoCheckUpdates defaults to true for both fresh and legacy configs, so
+	// it is a pointer: nil means unset. "Cancel" in the update dialog stores
+	// an explicit false and stops the daily check for good.
+	AutoCheckUpdates *bool     `yaml:"auto_check_updates,omitempty"`
+	LastUpdateCheck  time.Time `yaml:"last_update_check,omitempty"`
 }
 
 type Core struct {
@@ -135,6 +140,8 @@ type DNS struct {
 
 const Schema = 1
 
+func boolPtr(v bool) *bool { return &v }
+
 func Default() Settings {
 	return Settings{
 		Schema: Schema,
@@ -143,6 +150,7 @@ func Default() Settings {
 			CloseToTray:      true,
 			Language:         "auto",
 			Notifications:    true,
+			AutoCheckUpdates: boolPtr(true),
 		},
 		Core: Core{
 			MixedPort:      7890,
@@ -242,6 +250,19 @@ func (s *Store) load() error {
 	s.mu.Unlock()
 
 	return nil
+}
+
+// AutoCheckUpdates reports whether daily automatic update checks are on.
+// Legacy configs without the field are treated as enabled.
+func (s *Store) AutoCheckUpdates() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.s.App.AutoCheckUpdates == nil || *s.s.App.AutoCheckUpdates
+}
+
+// SetAutoCheckUpdates persists the user's choice from the update dialog.
+func (s *Store) SetAutoCheckUpdates(on bool) error {
+	return s.Update(func(v *Settings) { v.App.AutoCheckUpdates = boolPtr(on) })
 }
 
 func (s *Store) Get() Settings {

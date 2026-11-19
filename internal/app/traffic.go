@@ -94,27 +94,6 @@ func (a *App) flushTrafficLocked() {
 	a.lastTrafficFlush = time.Now()
 }
 
-func (a *App) trafficSeries(limit int, down bool) []float64 {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	if limit <= 0 || len(a.trafficHistory) == 0 {
-		return nil
-	}
-	start := len(a.trafficHistory) - limit
-	if start < 0 {
-		start = 0
-	}
-	out := make([]float64, 0, len(a.trafficHistory)-start)
-	for _, p := range a.trafficHistory[start:] {
-		if down {
-			out = append(out, float64(p.Down))
-		} else {
-			out = append(out, float64(p.Up))
-		}
-	}
-	return out
-}
-
 func (a *App) trafficHistorySnapshot() []trafficPoint {
 	a.mu.Lock()
 	defer a.mu.Unlock()

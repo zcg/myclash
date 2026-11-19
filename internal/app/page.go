@@ -88,13 +88,13 @@ func (a *App) pageOverview(c *ui.Context, p acrylic.Palette) {
 		}
 	})
 
-	down := rateSeries(s.History, true)
-	up := rateSeries(s.History, false)
 	ui.Row(c).Gap(12).AlignItems(ui.Stretch).Children(func() {
-		widgets.StatCard(c, p, opacity, "下行", format.Rate(s.Down),
-			"累计 "+format.Bytes(s.TotalDown), icons.ArrowDown, p.Accent, down)
-		widgets.StatCard(c, p, opacity, "上行", format.Rate(s.Up),
-			"累计 "+format.Bytes(s.TotalUp), icons.ArrowUp, p.Success, up)
+		widgets.StatCardFunc(c, p, opacity, "下行", format.Rate(s.Down),
+			"累计 "+format.Bytes(s.TotalDown), icons.ArrowDown, p.Accent,
+			len(s.History), func(i int) float64 { return float64(s.History[i].Down) })
+		widgets.StatCardFunc(c, p, opacity, "上行", format.Rate(s.Up),
+			"累计 "+format.Bytes(s.TotalUp), icons.ArrowUp, p.Success,
+			len(s.History), func(i int) float64 { return float64(s.History[i].Up) })
 	})
 	ui.Row(c).Gap(12).AlignItems(ui.Stretch).Children(func() {
 		widgets.StatCard(c, p, opacity, "连接", fmt.Sprint(len(s.Connections)),
@@ -838,6 +838,13 @@ func (a *App) settingsForm(c *ui.Context, p acrylic.Palette) {
 	case "update":
 		ui.Text(c, i18n.T("更新", "Updates")).FontSize(15).Bold()
 		ui.Textf(c, "当前版本：%s", mygo.App.Version()).FontSize(12).TextColor(p.InkMuted)
+		autoCheck := a.settings.AutoCheckUpdates()
+		if acrylic.Checkbox(c, p, &autoCheck, "每天自动检查更新").Changed() {
+			if err := a.settings.SetAutoCheckUpdates(autoCheck); err != nil {
+				a.setError(err)
+			}
+		}
+		ui.Text(c, "发现新版本时弹出提示；选择“取消”会关闭自动检查。").FontSize(11).TextColor(p.InkSubtle)
 		if !mygo.Updater.Enabled() {
 			ui.Text(c, "开发版、便携版或未配置签名发布的构建不会自动更新；发布版从 GitHub Releases 检查签名更新。").FontSize(11).TextColor(p.InkSubtle)
 		}
@@ -944,18 +951,6 @@ func (a *App) pageOverride(c *ui.Context, p acrylic.Palette) {
 		}
 		editor.View(c, view).Fill()
 	})
-}
-
-func rateSeries(h []core.RateSample, down bool) []float64 {
-	out := make([]float64, 0, len(h))
-	for _, v := range h {
-		if down {
-			out = append(out, float64(v.Down))
-		} else {
-			out = append(out, float64(v.Up))
-		}
-	}
-	return out
 }
 
 func (a *App) currentNode(s core.Snapshot) (string, core.Proxy, bool) {

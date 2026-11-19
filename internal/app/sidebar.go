@@ -109,7 +109,7 @@ func (a *App) monoSidebar(c *ui.Context, p acrylic.Palette) {
 					ui.Text(c, item.label).TextColor(color)
 				})
 				if row.Clicked() {
-					a.side = item.id
+					a.setPage(item.id)
 					a.router.Push("/" + item.id)
 				}
 			}

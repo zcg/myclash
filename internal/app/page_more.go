@@ -195,7 +195,9 @@ func (a *App) pageRules(c *ui.Context, p acrylic.Palette) {
 }
 
 func (a *App) pageLogs(c *ui.Context, p acrylic.Palette) {
-	logs := a.state.RecentLogs(1000)
+	// The list below caps at 600 rows; copying more is wasted work on every
+	// repaint (and a second copy of the same log data while paused).
+	logs := a.state.RecentLogs(600)
 	if a.logsPaused {
 		logs = a.frozenLogs
 	}
@@ -293,7 +295,9 @@ func (a *App) toggleLogsPaused() {
 		a.frozenLogs = nil
 		return
 	}
-	a.frozenLogs = a.state.RecentLogs(2000)
+	// The log page only draws the newest 600 entries; freezing more only
+	// keeps a second copy of data the user cannot see.
+	a.frozenLogs = a.state.RecentLogs(600)
 	a.logsPaused = true
 }
 

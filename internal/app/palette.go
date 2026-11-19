@@ -17,7 +17,7 @@ type paletteItem struct {
 func (a *App) paletteItems() []paletteItem {
 	nav := func(label, path string) paletteItem {
 		return paletteItem{label: "页面 · " + label, hint: path, run: func() {
-			a.side = strings.TrimPrefix(path, "/")
+			a.setPage(strings.TrimPrefix(path, "/"))
 			a.router.Push(path)
 		}}
 	}

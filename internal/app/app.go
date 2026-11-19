@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/egoist/mygo"
@@ -67,9 +68,13 @@ type App struct {
 	tray   *mygo.Tray
 	router *ui.Router
 	side   string
+	// activePage mirrors side for background goroutines; side itself is only
+	// touched on the UI thread.
+	activePage atomic.Value // string
 
-	ctx    context.Context
-	cancel context.CancelFunc
+	ctx              context.Context
+	cancel           context.CancelFunc
+	autoUpdateCancel context.CancelFunc
 
 	mu     sync.Mutex
 	busy   bool
@@ -213,6 +218,18 @@ type App struct {
 	ruleProvState     ui.ListState
 }
 
+// setPage is called on the UI thread whenever the visible navigation target
+// changes. Background pollers read activePage without racing the UI.
+func (a *App) setPage(page string) {
+	a.side = page
+	a.activePage.Store(page)
+}
+
+func (a *App) onPage(page string) bool {
+	v, _ := a.activePage.Load().(string)
+	return v == page
+}
+
 // retirePreviousInstance kills the process whose PID was written by an
 // earlier launch. A stale PID file, a reused PID and our own process are all
 // ignored; the new instance must not die because of a leftover file.
@@ -259,6 +276,7 @@ func Run() error {
 		ctx:    context.Background(),
 	}
 	a.cancel = func() {}
+	a.activePage.Store("overview")
 	mygo.App.WhenReady(a.ready)
 	return mygo.App.Run()
 }
@@ -450,6 +468,7 @@ func (a *App) ready() {
 		go a.restoreRuntimeState()
 	}
 	a.startupHealthCheck()
+	a.startAutoUpdateCheck()
 }
 
 // restoreRuntimeState reapplies system proxy settings after the core has
@@ -479,6 +498,10 @@ func (a *App) fatal(err error) {
 // once: normal quits call it from OnQuit, while forced exits call it before
 // terminating the process.
 func (a *App) finishShutdown() {
+	if a.autoUpdateCancel != nil {
+		a.autoUpdateCancel()
+		a.autoUpdateCancel = nil
+	}
 	a.flushTrafficHistory()
 	a.closeLogFile()
 	a.stopPAC()
@@ -810,9 +833,13 @@ func (a *App) invalidateWindows() {
 
 func (a *App) trackConnRates(conns []core.Connection) {
 	now := time.Now()
-	next := make(map[string]connRate, len(conns))
 	a.mu.Lock()
+	if a.connRates == nil {
+		a.connRates = make(map[string]connRate, len(conns))
+	}
+	seen := make(map[string]struct{}, len(conns))
 	for _, c := range conns {
+		seen[c.ID] = struct{}{}
 		r := connRate{up: c.Upload, down: c.Download, at: now}
 		if prev, ok := a.connRates[c.ID]; ok {
 			if dt := now.Sub(prev.at).Seconds(); dt > 0 {
@@ -824,9 +851,15 @@ func (a *App) trackConnRates(conns []core.Connection) {
 				}
 			}
 		}
-		next[c.ID] = r
+		a.connRates[c.ID] = r
 	}
-	a.connRates = next
+	// Drop rates for connections that have closed instead of replacing the
+	// whole map every poll.
+	for id := range a.connRates {
+		if _, ok := seen[id]; !ok {
+			delete(a.connRates, id)
+		}
+	}
 	a.mu.Unlock()
 }
 
@@ -865,7 +898,18 @@ func (a *App) startStreams(client *core.Client) {
 	}()
 
 	go func() {
+		var lastHidden time.Time
 		err := client.Connections(ctx, func(v core.Connections) {
+			// The connections page only needs fast updates while it is on
+			// screen. When another page is visible, fall back to a slow
+			// refresh: the snapshot stays current for the overview counts
+			// and the tray without allocating at the old 800ms cadence.
+			if !a.onPage("connections") {
+				if time.Since(lastHidden) < 3*time.Second {
+					return
+				}
+				lastHidden = time.Now()
+			}
 			a.trackConnRates(v.Connections)
 			a.state.SetConnections(v)
 			a.paintConnections()
@@ -896,13 +940,30 @@ func (a *App) startStreams(client *core.Client) {
 		})
 	}()
 	go func() {
-		ticker := time.NewTicker(2 * time.Second)
+		// Rules are large on some subscriptions. Poll quickly only while the
+		// rules page is visible; elsewhere a slow tick still picks up changes
+		// made from outside the app.
+		interval := 30 * time.Second
+		if a.onPage("rules") {
+			interval = 2 * time.Second
+		}
+		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
+		lastInterval := interval
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
+				want := 30 * time.Second
+				if a.onPage("rules") {
+					want = 2 * time.Second
+				}
+				if want != lastInterval {
+					ticker.Reset(want)
+					lastInterval = want
+					continue
+				}
 				rules, err := client.Rules(ctx)
 				if err != nil {
 					continue
@@ -1718,7 +1779,10 @@ func (a *App) toggleConnPaused() {
 		a.frozenConns = nil
 		return
 	}
-	a.frozenConns = append([]core.Connection(nil), a.state.View().Connections...)
+	// View() returns read-only immutable slices; SetConnections replaces the
+	// slice on the next poll rather than mutating it, so retaining it is safe
+	// and avoids a second full copy while paused.
+	a.frozenConns = a.state.View().Connections
 	a.connPaused = true
 }
 

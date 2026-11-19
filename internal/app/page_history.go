@@ -25,12 +25,6 @@ func (a *App) pageTraffic(c *ui.Context, p acrylic.Palette) {
 		ui.Text(c, "还没有足够的历史采样。内核运行后每 60 秒记录一次。").TextColor(p.InkMuted)
 		return
 	}
-	down := make([]float64, 0, len(hist))
-	up := make([]float64, 0, len(hist))
-	for _, x := range hist {
-		down = append(down, float64(x.Down))
-		up = append(up, float64(x.Up))
-	}
 	panel := a.panel(c, p, a.cardOpacity()).Padding(a.cardPad())
 	panel.Children(func() {
 		ui.Row(c).Gap(10).Children(func() {
@@ -38,8 +32,8 @@ func (a *App) pageTraffic(c *ui.Context, p acrylic.Palette) {
 			ui.Text(c, "上行").TextColor(p.InkSubtle)
 		})
 		ui.Row(c).Gap(10).Children(func() {
-			widgets.Sparkline(c, p.Accent.Alpha(0.8), down, 70)
-			widgets.Sparkline(c, p.Success.Alpha(0.8), up, 70)
+			widgets.SparklineFunc(c, p.Accent.Alpha(0.8), len(hist), func(i int) float64 { return float64(hist[i].Down) }, 70)
+			widgets.SparklineFunc(c, p.Success.Alpha(0.8), len(hist), func(i int) float64 { return float64(hist[i].Up) }, 70)
 		})
 	})
 	rows := hist
