@@ -97,6 +97,6 @@ func (a *App) installUpdate() {
 		a.updateStatus = "更新已下载，正在重启"
 		a.mu.Unlock()
 		a.invalidate()
-		mygo.App.Relaunch()
+		a.requestRelaunch()
 	}()
 }

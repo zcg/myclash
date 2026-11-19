@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/egoist/mygo"
 	"myclash/internal/settings"
 )
 
@@ -134,5 +133,5 @@ func (a *App) downloadWebDAV() {
 		return
 	}
 	a.setStatus("已从 WebDAV 恢复，重启应用生效")
-	mygo.App.Relaunch()
+	a.requestRelaunch()
 }

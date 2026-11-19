@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -212,9 +213,42 @@ type App struct {
 	ruleProvState     ui.ListState
 }
 
-// Run starts the application. It returns immediately when another instance is
-// already running (that instance gets activated instead).
+// retirePreviousInstance kills the process whose PID was written by an
+// earlier launch. A stale PID file, a reused PID and our own process are all
+// ignored; the new instance must not die because of a leftover file.
+func retirePreviousInstance(path string) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
+	if err != nil || pid <= 0 || pid == os.Getpid() || !platform.IsProcessAlive(pid) {
+		return
+	}
+	// A recycled PID must never be killed on the strength of a stale file.
+	if !platform.IsSelfExecutable(pid) {
+		return
+	}
+	platform.KillPID(pid)
+	platform.WaitForExit(pid, 2*time.Second)
+}
+
+func writeInstancePID(path string) {
+	_ = os.WriteFile(path, []byte(strconv.Itoa(os.Getpid())), 0o600)
+}
+
+// Run starts the application. Only one instance runs at a time: an older
+// process is force-retired before this one takes the lock, and a newer launch
+// force-retires this one in turn.
 func Run() error {
+	// Kill any previous instance recorded in the PID file before MyGo's
+	// single-instance lock is taken. A hung process can hold the lock, the
+	// controller port and the system proxy at the same time; asking it to
+	// quit politely is not enough to guarantee a usable network.
+	platform.KillOtherInstances()
+	if dir, err := mygo.App.Path(mygo.PathUserData); err == nil {
+		retirePreviousInstance(filepath.Join(dir, "instance.pid"))
+	}
 	if !mygo.App.RequestSingleInstanceLock() {
 		return nil
 	}
@@ -236,6 +270,7 @@ func (a *App) ready() {
 		return
 	}
 	a.dataDir = dir
+	writeInstancePID(filepath.Join(dir, "instance.pid"))
 	a.loadTrafficHistory(dir)
 	a.settings, err = settings.NewStore(dir)
 	if err != nil {
@@ -253,15 +288,13 @@ func (a *App) ready() {
 	}
 	mygo.App.OnBeforeQuit(func(*mygo.QuitEvent) {
 		a.forceQuit = true
+		// Release the controller port and system proxy before the new
+		// instance is started by App.Relaunch. The core's shutdown is local
+		// and fast; keep it on the main thread so MyGo's graceful Relaunch
+		// cannot start a new process while the old one still owns resources.
+		a.prepareRestart()
 	})
-	mygo.App.OnQuit(func() {
-		a.flushTrafficHistory()
-		a.closeLogFile()
-
-		if a.proxyOwned && a.systemProxy && a.sysproxy != nil {
-			_ = a.sysproxy.Restore(a.proxySnapshot)
-		}
-	})
+	mygo.App.OnQuit(a.finishShutdown)
 	s := a.settings.Get()
 	if hasArg("--tun-off") && s.TUN.Enable {
 		_ = a.settings.Update(func(s *settings.Settings) { s.TUN.Enable = false })
@@ -409,10 +442,69 @@ func (a *App) ready() {
 	if s.App.AutoStartProfile && a.profiles.Selected() != "" {
 		a.startCore()
 	}
+
+	// Restore the machine state that was active before the previous instance
+	// went away: system proxy and TUN are settings, so a fresh process must
+	// reapply them instead of assuming the old process left them in place.
+	if s.Proxy.SystemEnabled {
+		go a.restoreRuntimeState()
+	}
+	a.startupHealthCheck()
+}
+
+// restoreRuntimeState reapplies system proxy settings after the core has
+// started. It waits for the core listener rather than racing the first start.
+func (a *App) restoreRuntimeState() {
+	port := a.settings.Get().Core.MixedPort
+	addr := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
+	for i := 0; i < 40; i++ {
+		conn, err := net.DialTimeout("tcp", addr, 250*time.Millisecond)
+		if err == nil {
+			_ = conn.Close()
+			break
+		}
+		time.Sleep(250 * time.Millisecond)
+	}
+	a.systemProxy = false
+	a.proxyOwned = false
+	a.toggleSystemProxy(true)
 }
 
 func (a *App) fatal(err error) {
 	a.setError(err)
+}
+
+// finishShutdown persists what must survive an exit and puts the machine back
+// in the state it was before myclash took over. It is safe to call more than
+// once: normal quits call it from OnQuit, while forced exits call it before
+// terminating the process.
+func (a *App) finishShutdown() {
+	a.flushTrafficHistory()
+	a.closeLogFile()
+	a.stopPAC()
+	if a.proxyOwned && a.systemProxy && a.sysproxy != nil {
+		_ = a.sysproxy.Restore(a.proxySnapshot)
+		a.proxyOwned = false
+	}
+}
+
+// prepareRestart releases the resources held by this process before a new
+// instance takes over. Everything here is local and bounded: a stuck native
+// quit must never keep the old process from handing the controller port, the
+// system proxy and the single-instance lock to the new one.
+func (a *App) prepareRestart() {
+	a.cancel()
+	a.mu.Lock()
+	host := a.host
+	a.host = nil
+	a.client = nil
+	a.mu.Unlock()
+	if host != nil {
+		_ = host.Stop(context.Background())
+	}
+	a.state.SetStarted(false)
+	a.finishShutdown()
+	a.systemProxy = false
 }
 
 func (a *App) view(c *ui.Context) {

@@ -41,7 +41,7 @@ func (a *App) restoreData() {
 		return
 	}
 	a.setStatus("备份已恢复，重启应用生效")
-	mygo.App.Relaunch()
+	a.requestRelaunch()
 }
 
 func (a *App) exportDiagnostics() {
@@ -80,7 +80,7 @@ func (a *App) resetData() {
 		return
 	}
 	_ = os.RemoveAll(a.dataDir)
-	mygo.App.Relaunch()
+	a.requestRelaunch()
 }
 
 func writeZip(dest, dataDir string, includeProfiles bool) error {

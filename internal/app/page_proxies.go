@@ -57,7 +57,7 @@ func (a *App) pageProxies(c *ui.Context, p acrylic.Palette) {
 	}
 	if a.proxySearch != "" {
 		q := strings.ToLower(a.proxySearch)
-		filtered := groups[:0]
+		filtered := make([]string, 0, len(groups))
 		for _, g := range groups {
 			proxy := s.Proxies[g]
 			match := strings.Contains(strings.ToLower(g), q) || strings.Contains(strings.ToLower(proxy.Now), q)
@@ -258,12 +258,14 @@ func (a *App) proxyColumns() int {
 	case 1:
 		return 3
 	case 2:
-		return 3
+		return 4
 	}
 	if a.win == nil {
 		return 3
 	}
-	w, _ := a.win.Size()
+	w, _ := a.win.ContentSize()
+	// Window sizes are in native DIPs; the view lays out at its own zoom.
+	// Ignore an old scale setting from before the UI exposed a zoom control.
 	scale := a.settings.Get().UI.Scale
 	if scale < 1 {
 		scale = 1
@@ -273,8 +275,8 @@ func (a *App) proxyColumns() int {
 	if cols < 2 {
 		cols = 2
 	}
-	if cols > 3 {
-		cols = 3
+	if cols > 5 {
+		cols = 5
 	}
 	return cols
 }

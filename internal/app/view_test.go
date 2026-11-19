@@ -131,6 +131,18 @@ func TestViewAppearanceModes(t *testing.T) {
 	}
 }
 
+func TestViewProxiesColumnOptions(t *testing.T) {
+	a := newTestApp(t)
+	a.side = "proxies"
+	a.router = ui.NewRouter("/proxies")
+	tt := ui.NewTester(a.view, 1180, 760)
+	for _, want := range []string{"2列", "3列", "4列", "自动"} {
+		if !tt.HasText(want) {
+			t.Fatalf("proxy column option %q missing; texts=%q", want, tt.Texts())
+		}
+	}
+}
+
 func TestTunStackIndexUsesMips(t *testing.T) {
 	if got := tunStackIndex("mips"); got != 3 {
 		t.Fatalf("mips index = %d, want 3", got)

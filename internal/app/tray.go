@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"fmt"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/egoist/mygo"
@@ -159,16 +160,35 @@ func (a *App) quitApp() {
 	// let a stuck shutdown keep the process alive. App.Quit depends on the
 	// native event loop finishing; in this path that is exactly what is broken.
 	go func() {
-		a.flushTrafficHistory()
-		done := make(chan struct{})
-		go func() {
-			a.stopCore()
-			close(done)
-		}()
-		select {
-		case <-done:
-		case <-time.After(1500 * time.Millisecond):
-		}
+		a.prepareRestart()
 		os.Exit(0)
 	}()
+}
+
+// requestRelaunch runs after an update has replaced the binary on disk (or a
+// restored profile needs a fresh process). On macOS MyGo's Relaunch is
+// required to finish its staged update, so we use it there. On Windows and
+// Linux a detached helper starts the new instance only after this process is
+// truly gone: it cannot linger holding the controller port or single-instance
+// lock, and no half-dead process can keep the new one from starting.
+func (a *App) requestRelaunch() {
+	a.forceQuit = true
+	if a.tray != nil {
+		a.tray.Destroy()
+		a.tray = nil
+	}
+	if runtime.GOOS == "darwin" {
+		mygo.App.Relaunch()
+		return
+	}
+	go a.prepareRestart()
+	platform.ArmKillWatchdog()
+	if err := platform.StartDetachedRelaunch(500 * time.Millisecond); err != nil {
+		a.setError(fmt.Errorf("重启失败，请手动启动 myclash: %w", err))
+		return
+	}
+	// The detached helper starts the new instance only after this PID is
+	// gone. Quit through MyGo so its on-quit handlers release the lock and
+	// the updater can finish any cleanup on disk.
+	mygo.App.Quit()
 }
